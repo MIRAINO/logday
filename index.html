@@ -626,7 +626,18 @@ document.getElementById("exportLogday").onclick = () => {
        style="display:inline-block;margin-top:8px;padding:6px 12px;border:1px solid #ccc;border-radius:6px;cursor:pointer;">
   JSONを読み込んで復元
 </label>
-<input id="importFile" type="file" accept="application/json" style="display:none" />
+<input
+  id="importFile"
+  type="file"
+  accept="application/json"
+  style="
+    position:absolute;
+    left:-9999px;
+    width:1px;
+    height:1px;
+    opacity:0;
+  "
+/>
 
 <script>
   // import の処理
