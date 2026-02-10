@@ -5,224 +5,242 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LOGDAY</title>
 <style>
-body{
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  padding:20px;
-  line-height:1.6;
-  background:#fafafa;
-  padding-bottom:90px; /* 下バーに隠れないように */
-}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    padding:20px;
+    line-height:1.6;
+    background:#fafafa;
+    padding-bottom:90px; /* 下バーに隠れないように */
+  }
 
-h2{margin-bottom:20px;}
+  h2{margin-bottom:20px;}
 
-#nav{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-bottom:8px;
-}
+  #nav{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:8px;
+  }
 
-.entry{
-  background:#fff;
-  padding:10px 12px;
-  border-radius:8px;
-  box-shadow:0 1px 4px rgba(0,0,0,0.06);
-  margin-bottom:12px;
-}
+  .entry{
+    background:#fff;
+    padding:10px 12px;
+    border-radius:8px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06);
+    margin-bottom:12px;
+  }
 
-.time{color:#888;width:60px;display:inline-block;vertical-align:top;}
-.text{display:block;margin-left:60px;}
+  .time{color:#888;width:60px;display:inline-block;vertical-align:top;}
+  .text{display:block;margin-left:60px;}
 
-#meta{margin-bottom:12px;color:#666;}
-#weather{font-weight:bold;}
-#dayNote{font-size:.9em;margin-top:4px;}
+  #meta{margin-bottom:12px;color:#666;}
+  #weather{font-weight:bold;}
+  #dayNote{font-size:.9em;margin-top:4px;}
 
-#ai{margin-top:40px;color:#666;font-size:.9em;}
-.end{margin-top:30px;font-weight:bold;}
+  #ai{margin-top:40px;color:#666;font-size:.9em;}
+  .end{margin-top:30px;font-weight:bold;}
 
-/* ▼カレンダー（月） */
-#calendar{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:4px;
-  margin-bottom:16px;
-}
+  /* ▼カレンダー（月） */
+  #calendar{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px;
+    margin-bottom:16px;
+  }
 
-#calendar button{
-  padding:6px 0;
-  border-radius:6px;
-  border:1px solid #ccc;
-  background:#fff;
-  cursor:pointer;
-  font-size:.85em;
-}
+  #calendar button{
+    padding:6px 0;
+    border-radius:6px;
+    border:1px solid #ccc;
+    background:#fff;
+    cursor:pointer;
+    font-size:.85em;
+  }
 
-#calendar button.active{
-  background:#333;
-  color:#fff;
-}
+  #calendar button.active{
+    background:#333;
+    color:#fff;
+  }
 
-#calendar.hidden{display:none;}
+  #calendar.hidden{display:none;}
 
-/* ▼週バー */
-#weekBar{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:6px;
-  margin:10px 0 16px;
-}
+  /* ▼週バー */
+  #weekBar{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+    margin:10px 0 16px;
+  }
 
-#weekBar button{
-  padding:8px 0;
-  border-radius:10px;
-  border:1px solid #ddd;
-  background:#fff;
-  cursor:pointer;
-  font-size:.85em;
-  line-height:1.1;
-}
+  #weekBar button{
+    padding:8px 0;
+    border-radius:10px;
+    border:1px solid #ddd;
+    background:#fff;
+    cursor:pointer;
+    font-size:.85em;
+    line-height:1.1;
+  }
 
-#weekBar button .d{
-  display:block;
-  font-size:.75em;
-  color:#666;
-  margin-top:2px;
-}
+  #weekBar button .d{
+    display:block;
+    font-size:.75em;
+    color:#666;
+    margin-top:2px;
+  }
 
-#weekBar button.active{background:#333;color:#fff;}
-#weekBar button.active .d{color:#fff;opacity:.85;}
+  #weekBar button.active{background:#333;color:#fff;}
+  #weekBar button.active .d{color:#fff;opacity:.85;}
 
-/* ▼表示切替 */
-#viewToggle{
-  margin-left:auto;
-  display:flex;
-  gap:4px;
-}
+  /* ▼表示切替 */
+  #viewToggle{
+    margin-left:auto;
+    display:flex;
+    gap:4px;
+  }
 
-#viewToggle button{
-  padding:4px 10px;
-  border-radius:999px;
-  border:1px solid #ccc;
-  background:#fff;
-  cursor:pointer;
-  font-size:.85em;
-}
+  #viewToggle button{
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid #ccc;
+    background:#fff;
+    cursor:pointer;
+    font-size:.85em;
+  }
 
-#viewToggle button.active{background:#333;color:#fff;}
+  #viewToggle button.active{background:#333;color:#fff;}
 
-/* ▼入力エリア（旧） */
-#inputArea{display:flex;gap:8px;margin-bottom:16px;}
-#inputArea input{padding:6px;border-radius:6px;border:1px solid #ccc;}
-#inputArea button{padding:6px 10px;border-radius:6px;border:none;background:#333;color:#fff;cursor:pointer;}
+  /* ▼入力エリア（旧） */
+  #inputArea{display:flex;gap:8px;margin-bottom:16px;}
+  #inputArea input{padding:6px;border-radius:6px;border:1px solid #ccc;}
+  #inputArea button{padding:6px 10px;border-radius:6px;border:none;background:#333;color:#fff;cursor:pointer;}
 
-/* ▼フリースペース */
-#notesArea{margin-top:20px;}
-#notesArea textarea{
-  width:100%;
-  min-height:120px;
-  padding:8px;
-  border-radius:6px;
-  border:1px solid #ccc;
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-}
-#notesArea button{
-  margin-top:8px;
-  padding:6px 10px;
-  border-radius:6px;
-  border:none;
-  background:#333;
-  color:#fff;
-  cursor:pointer;
-}
+  /* ▼フリースペース */
+  #notesArea{margin-top:20px;}
+  #notesArea textarea{
+    width:100%;
+    min-height:120px;
+    padding:8px;
+    border-radius:6px;
+    border:1px solid #ccc;
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  }
+  #notesArea button{
+    margin-top:8px;
+    padding:6px 10px;
+    border-radius:6px;
+    border:none;
+    background:#333;
+    color:#fff;
+    cursor:pointer;
+  }
 
-/* ▼写真エリア */
-#photoArea{margin:12px 0 20px;}
-#photoPlaceholder{
-  width:100%;
-  height:180px;
-  background:#eaeaea;
-  border-radius:12px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#666;
-  font-size:16px;
-  cursor:pointer;
-}
+  /* ▼写真エリア */
+  #photoArea{margin:12px 0 20px;}
+  #photoPlaceholder{
+    width:100%;
+    height:180px;
+    background:#eaeaea;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#666;
+    font-size:16px;
+    cursor:pointer;
+  }
 
-/* ▼下から出る入力バー（LINE風） */
-#inputBar{
-  position:fixed;
-  left:0; right:0; bottom:0;
-  background:#fff;
-  border-top:1px solid #ddd;
-  padding:10px 12px;
-  display:flex;
-  gap:8px;
-  z-index:9999;
-  align-items:flex-end;
-  transition:padding .25s ease;
-  max-height:220px;
-}
+  /* ▼下から出る入力バー（LINE風） */
+  #inputBar{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    background:#fff;
+    border-top:1px solid #ddd;
+    padding:10px 12px;
+    display:flex;
+    gap:8px;
+    z-index:9999;
+    align-items:flex-end;
+    transition:padding .25s ease;
+    max-height:220px;
+  }
 
-#actionBar{
-  display:flex;
-  gap:6px;
-  align-items:center;
-}
+  #actionBar{
+    display:flex;
+    gap:6px;
+    align-items:center;
+  }
 
-.iconBtn{
-  width:34px;height:34px;
-  border-radius:10px;
-  border:1px solid #ddd;
-  background:#fff;
-  cursor:pointer;
-  font-size:16px;
-  line-height:1;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-}
+  .iconBtn{
+    width:34px;height:34px;
+    border-radius:10px;
+    border:1px solid #ddd;
+    background:#fff;
+    cursor:pointer;
+    font-size:16px;
+    line-height:1;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
 
-.iconBtn:active{transform:translateY(1px);}
+  .iconBtn:active{transform:translateY(1px);}
 
-#logInput{
-  flex:1;
-  height:36px;
-  resize:none;
-  border-radius:10px;
-  border:1px solid #ccc;
-  padding:8px 10px;
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  width:100%;
-  box-sizing:border-box;
-  outline:none;
-  transition:height .25s ease;
-}
+  #logInput{
+    flex:1;
+    height:36px;
+    resize:none;
+    border-radius:10px;
+    border:1px solid #ccc;
+    padding:8px 10px;
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    width:100%;
+    box-sizing:border-box;
+    outline:none;
+    transition:height .25s ease;
+  }
 
-#saveBtn{
-  padding:0 14px;
-  height:34px;
-  border-radius:10px;
-  border:none;
-  background:#333;
-  color:#fff;
-  cursor:pointer;
-}
+  #saveBtn{
+    padding:0 14px;
+    height:34px;
+    border-radius:10px;
+    border:none;
+    background:#333;
+    color:#fff;
+    cursor:pointer;
+  }
 
-/* 開いた状態（にゅっと伸びる） */
-#inputBar.expanded{padding:12px;box-shadow:0 -8px 20px rgba(0,0,0,0.12);}
-#inputBar.expanded #logInput{height:120px;}
+  #inputBar.expanded{padding:12px;box-shadow:0 -8px 20px rgba(0,0,0,0.12);}
+  #inputBar.expanded #logInput{height:120px;}
 
-/* file input はUIを出さず、機能だけ残す（iOSでlabel forで開く） */
-.fileInput{
-  position:fixed;
-  top:-10000px;
-  left:-10000px;
-  width:0;height:0;
-  opacity:0;
-  pointer-events:none;
-}
+  /* file input はUIを出さず、機能だけ残す（iOSでlabel forで開く） */
+  .fileInput{
+    position:fixed;
+    top:-10000px;
+    left:-10000px;
+    width:1px;height:1px;
+    opacity:0;
+  }
+
+  /* ▼バックアップUI */
+  #backupArea{
+    margin-top:16px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .ghostBtn{
+    padding:6px 12px;
+    border-radius:10px;
+    border:1px solid #ccc;
+    background:#fff;
+    cursor:pointer;
+    font-size:.9em;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
 </style>
 </head>
 <body>
@@ -269,6 +287,14 @@ h2{margin-bottom:20px;}
 <div id="notesArea">
   <textarea id="notesInput" placeholder="この日の備考・感想など、時間軸関係なく自由に書けます"></textarea>
   <button id="saveNotes">保存</button>
+
+  <!-- バックアップ -->
+  <div id="backupArea">
+    <button id="exportLogday" class="ghostBtn" type="button">全ログをJSONで保存</button>
+
+    <label for="importFile" class="ghostBtn" role="button">JSONを読み込んで復元</label>
+    <input id="importFile" class="fileInput" type="file" accept="application/json" />
+  </div>
 </div>
 
 <div id="ai"></div>
@@ -309,6 +335,7 @@ function renderDateHeader(dateStr){
 
 function formatYMD(d){ return d.toISOString().slice(0,10); }
 
+// 月曜始まりの週の先頭を返す
 function startOfWeek(dateStr){
   const d = new Date(dateStr);
   const day = d.getDay(); // 0=日
@@ -361,7 +388,7 @@ function renderWeekBar(dateStr){
 }
 
 /* =========================
-   render: month calendar
+   render: month calendar (月曜始まりに統一)
 ========================= */
 function generateCalendar(){
   const cal = document.getElementById('calendar');
@@ -370,12 +397,15 @@ function generateCalendar(){
   const d = new Date(currentDate);
   const year = d.getFullYear();
   const month = d.getMonth();
+
   const firstDay = new Date(year, month, 1);
   const lastDate = new Date(year, month + 1, 0).getDate();
-  const startWeekday = firstDay.getDay(); // 0=日
 
-  // 空白（カレンダーの頭合わせ）
-  for(let i=0;i<startWeekday;i++){
+  // firstDay.getDay(): 0(日)〜6(土)
+  // 月曜始まりの空白数に変換：月(1)->0, 火(2)->1, ... 日(0)->6
+  const blanks = (firstDay.getDay() + 6) % 7;
+
+  for(let i=0;i<blanks;i++){
     const empty = document.createElement('button');
     empty.disabled = true;
     empty.style.visibility = 'hidden';
@@ -391,9 +421,10 @@ function generateCalendar(){
 
     btn.onclick = () => {
       currentDate = dayStr;
-      // 月表示中はヘッダーだけ更新しておく
       renderDateHeader(currentDate);
       generateCalendar();
+      // ★月表示でも、押した日はちゃんと内容を見せる
+      loadDay(currentDate);
     };
 
     cal.appendChild(btn);
@@ -401,7 +432,7 @@ function generateCalendar(){
 }
 
 /* =========================
-   render: day
+   render: day / month
 ========================= */
 function loadDay(dateStr){
   renderDateHeader(dateStr);
@@ -437,13 +468,12 @@ function loadDay(dateStr){
 
 function loadMonth(dateStr){
   renderDateHeader(dateStr);
-  // 月モードの中身は今は仮（必要ならここで月まとめを出す）
-  const entriesDiv = document.getElementById('entries');
-  entriesDiv.innerHTML = '<p style="color:#888;">📅 月表示（カレンダーから日付選択）</p>';
+  // 月モードでも下は選択日の内容を見せるので、ここは最小表示でOK
+  loadDay(dateStr);
 }
 
 /* =========================
-   view switch (ONLY ONE SET)
+   view switch
 ========================= */
 const weekBtn = document.getElementById('weekBtn');
 const monthBtn = document.getElementById('monthBtn');
@@ -591,17 +621,8 @@ function handlePickedImage(file){
 });
 
 /* =========================
-   init
+   backup: export / import
 ========================= */
-generateCalendar(); // 月のために用意
-showWeek();         // 初期は週
-</script>
-
-<button id="exportLogday" style="margin-top:12px">
-  全ログをJSONで保存
-</button>
-
-<script>
 document.getElementById("exportLogday").onclick = () => {
   const out = {};
   for (const k of Object.keys(localStorage)) {
@@ -610,52 +631,18 @@ document.getElementById("exportLogday").onclick = () => {
     }
   }
 
-  const blob = new Blob(
-    [JSON.stringify(out, null, 2)],
-    { type: "application/json" }
-  );
-
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `logday-backup-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
 };
-</script>
 
-<label for="importFile"
-       style="display:inline-block;margin-top:8px;padding:6px 12px;border:1px solid #ccc;border-radius:6px;cursor:pointer;">
-  JSONを読み込んで復元
-</label>
-
-<input
-  id="importFile"
-  type="file"
-  accept="application/json"
-  style="
-    position:absolute;
-    left:-9999px;
-    width:1px;
-    height:1px;
-    opacity:0;
-  "
-/>
-
-<script>
-window.addEventListener("DOMContentLoaded", () => {
+(() => {
   const input = document.getElementById("importFile");
-  if (!input) {
-    alert("importFile が見つからない（HTMLの配置を確認して）");
-    return;
-  }
-
   const handler = async () => {
-    alert("ファイルを受け取ったよ");
-
     const file = input.files && input.files[0];
-    if (!file) {
-      alert("ファイルが取れなかった…もう一回選んでみて");
-      return;
-    }
+    if (!file) return;
 
     try {
       const text = await file.text();
@@ -688,7 +675,13 @@ window.addEventListener("DOMContentLoaded", () => {
 
   input.addEventListener("change", handler);
   input.addEventListener("input", handler);
-});
+})();
+
+/* =========================
+   init
+========================= */
+generateCalendar();
+showWeek();
 </script>
 
 </body>
