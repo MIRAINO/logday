@@ -305,7 +305,7 @@
     border:1px solid #ccc;
     padding:4px;
   ">
-  
+
   <div id="actionBar">
     <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
     <label class="iconBtn" for="takePhotoInput" title="カメラ" role="button">📷</label>
@@ -562,14 +562,23 @@ saveBtn.addEventListener('click', () => {
   const text = logInput.value.trim();
   if(!text) return;
 
+  const timeInput = document.getElementById('logTime');
+  const time = timeInput.value || new Date().toTimeString().slice(0,5);
+
   const dayData = JSON.parse(localStorage.getItem(currentDate) || '{}');
-  dayData.notes = (dayData.notes || '');
-  dayData.notes += (dayData.notes ? '\n' : '') + text;
+  dayData.entries = dayData.entries || [];
+
+  dayData.entries.push({ time, text });
+
+  // 時間順に並び替え（←超重要）
+  dayData.entries.sort((a,b) => a.time.localeCompare(b.time));
+
   localStorage.setItem(currentDate, JSON.stringify(dayData));
 
-  document.getElementById('notesInput').value = dayData.notes;
+  loadDay(currentDate);
 
   logInput.value = '';
+  timeInput.value = '';
   inputBar.classList.remove('expanded');
   logInput.blur();
 });
