@@ -420,6 +420,53 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
+
+  /* ☑️ボタンは通常は隠す */
+#doneBtn{
+  display:none;
+  height:34px;
+  padding:0 12px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,0.14);
+  background:#fff;
+  cursor:pointer;
+}
+
+/* expanded中：左のボタン群を消して、入力欄を主役に */
+#inputBar.expanded #actionBar,
+#inputBar.expanded #timeBtn,
+#inputBar.expanded #logTime{
+  display:none !important;
+}
+
+/* expanded中：☑️ボタンを出す */
+#inputBar.expanded #doneBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* expanded中：入力欄を横に広げる */
+#inputBar.expanded{
+  margin: 0 12px 12px;     /* 端まで寄せて“広がった感” */
+  border-radius:16px;
+  border:1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
+  padding:12px;
+  gap:10px;
+}
+
+/* expanded中：logInputが横幅を全部取る */
+#inputBar.expanded #logInput{
+  flex:1;
+  width:100%;
+  height:120px;
+  max-height:180px;
+  padding:10px 12px;
+  font-size:16px;      /* iPhoneズーム防止 */
+  line-height:1.5;
+}
+
 </style>
 </head>
 <body>
@@ -471,7 +518,7 @@
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
-
+  <button id="doneBtn" type="button" aria-label="閉じる" title="閉じる">☑️</button>
   <input id="logTime" type="time">
 
   <input id="pickPhotoInput" class="fileInput" type="file" accept="image/*">
@@ -889,6 +936,34 @@ document.getElementById("exportLogday").onclick = () => {
   input.addEventListener("change", handler);
   input.addEventListener("input", handler);
 })();
+
+const doneBtn = document.getElementById('doneBtn');
+
+function openComposer(){
+  inputBar.classList.add('expanded');
+  // iOSで効きが弱い時の保険
+  requestAnimationFrame(() => inputBar.classList.add('expanded'));
+}
+
+function closeComposer(){
+  inputBar.classList.remove('expanded');
+  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
+  logInput.blur();
+}
+
+// フォーカスしたら開く
+logInput.addEventListener('focus', openComposer);
+
+// ☑️は「入力せず閉じる」
+doneBtn.addEventListener('click', () => {
+  closeComposer();
+});
+
+// 保存の最後でも閉じる（あなたの保存処理の末尾に入れてOK）
+saveBtn.addEventListener('click', () => {
+  // 既存の保存処理が走ったあと…
+  closeComposer();
+});
 
 /* init */
 generateCalendar();
