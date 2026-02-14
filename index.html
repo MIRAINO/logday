@@ -267,20 +267,14 @@
   <span id="currentWeekday"></span>
 </h2>
 
-<div id="photoArea">
-  <div id="photoPlaceholder">＋ 写真を追加</div>
-</div>
+
 
 <div id="meta">
   <span id="weather"></span>
   <div id="dayNote"></div>
 </div>
 
-<div id="inputArea">
-  <input id="timeInput" type="time">
-  <input id="textInput" type="text" placeholder="いま何してる？">
-  <button id="addEntry">追加</button>
-</div>
+
 
 <div id="entries"></div>
 
@@ -302,6 +296,16 @@
 
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
+
+  <input id="logTime" type="time"
+  style="
+    width:80px;
+    height:34px;
+    border-radius:10px;
+    border:1px solid #ccc;
+    padding:4px;
+  ">
+  
   <div id="actionBar">
     <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
     <label class="iconBtn" for="takePhotoInput" title="カメラ" role="button">📷</label>
@@ -531,24 +535,7 @@ document.getElementById('today').onclick = () => {
   renderWeekBar(currentDate);
 };
 
-/* =========================
-   add entry (old inputArea)
-========================= */
-document.getElementById('addEntry').onclick = () => {
-  const time = document.getElementById('timeInput').value;
-  const text = document.getElementById('textInput').value.trim();
-  if(!text) return;
 
-  const dayData = JSON.parse(localStorage.getItem(currentDate) || '{}');
-  dayData.entries = dayData.entries || [];
-  dayData.entries.push({time: time || '•', text});
-  localStorage.setItem(currentDate, JSON.stringify(dayData));
-
-  loadDay(currentDate);
-
-  document.getElementById('timeInput').value = '';
-  document.getElementById('textInput').value = '';
-};
 
 /* =========================
    notes save
@@ -597,21 +584,8 @@ document.getElementById('plusBtn').addEventListener('click', () => {
 const pickPhotoInput = document.getElementById('pickPhotoInput');
 const takePhotoInput = document.getElementById('takePhotoInput');
 
-function handlePickedImage(file){
-  if(!file) return;
 
-  const placeholder = document.getElementById('photoPlaceholder');
-  const url = URL.createObjectURL(file);
 
-  placeholder.innerHTML = '';
-  placeholder.style.backgroundImage = `url(${url})`;
-  placeholder.style.backgroundSize = 'cover';
-  placeholder.style.backgroundPosition = 'center';
-  placeholder.style.color = 'transparent';
-
-  inputBar.classList.add('expanded');
-  logInput.focus();
-}
 
 [pickPhotoInput, takePhotoInput].forEach(inp => {
   inp.addEventListener('change', (e) => {
