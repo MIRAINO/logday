@@ -698,17 +698,20 @@ const logInput = document.getElementById('logInput');
 const saveBtn  = document.getElementById('saveBtn');
 
 logInput.addEventListener('focus', () => inputBar.classList.add('expanded'));
-logInput.addEventListener('blur', () => {
-  collapseInputBar();
-});
+logInput.addEventListener('blur', () => collapseInputBar());
 
 function collapseInputBar(){
   inputBar.classList.remove('expanded');
 
-  // iOS対策：レイアウトが確定した後にもう一回
-  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
-  setTimeout(() => inputBar.classList.remove('expanded'), 0);
-  setTimeout(() => inputBar.classList.remove('expanded'), 120);
+  // iOS対策：描画更新を強制（幅戻らない対策）
+  requestAnimationFrame(() => {
+    inputBar.classList.remove('expanded');
+
+    // 強制リフロー（再計算させる）
+    inputBar.style.display = 'none';
+    void inputBar.offsetHeight; // ←これが効く
+    inputBar.style.display = 'flex';
+  });
 }
 
 function collapseNotesDock(){
