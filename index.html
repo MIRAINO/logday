@@ -180,6 +180,11 @@
     backdrop-filter: blur(6px);
   }
 
+  #notesDock.expanded textarea{
+  max-height: 220px;
+  min-height: 120px;
+  }
+
   #notesDock textarea{
     flex: 1;
     min-height: 72px;
@@ -605,13 +610,33 @@ document.getElementById('today').onclick = () => {
   renderWeekBar(currentDate);
 };
 
+// ▼備考ドック制御
+const notesDock = document.getElementById('notesDock');
+const notesInput = document.getElementById('notesInput');
+const saveNotesBtn = document.getElementById('saveNotes');
+
+// 備考をタップしたら少し拡大
+notesInput.addEventListener('focus', () => {
+  notesDock.classList.add('expanded');
+});
+
+// 備考からフォーカスが外れたら元に戻す
+notesInput.addEventListener('blur', () => {
+  notesDock.classList.remove('expanded');
+});
+
 /* notes save */
-document.getElementById('saveNotes').onclick = () => {
-  const notes = document.getElementById('notesInput').value;
+saveNotesBtn.onclick = () => {
+  const notes = notesInput.value;
   const dayData = getDayData(currentDate);
   dayData.notes = notes;
   saveDayData(currentDate, dayData);
+
   alert('保存しました！');
+
+  // ★ここ追加
+  notesDock.classList.remove('expanded');
+  notesInput.blur();
 };
 
 /* bottom bar */
@@ -621,6 +646,18 @@ const saveBtn  = document.getElementById('saveBtn');
 
 logInput.addEventListener('focus', () => inputBar.classList.add('expanded'));
 logInput.addEventListener('blur',  () => inputBar.classList.remove('expanded'));
+
+function collapseInputBar(){
+  inputBar.classList.remove('expanded');
+  // 連続タップでも確実に戻す（iOS対策）
+  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
+}
+
+function collapseNotesDock(){
+  const notesDock = document.getElementById('notesDock');
+  notesDock.classList.remove('expanded');
+  requestAnimationFrame(() => notesDock.classList.remove('expanded'));
+}
 
 logInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -645,7 +682,7 @@ saveBtn.addEventListener('click', () => {
   loadDay(dateKey);
 
   logInput.value = '';
-  inputBar.classList.remove('expanded');
+  collapseInputBar();
   logInput.blur();
 });
 
