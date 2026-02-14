@@ -237,6 +237,62 @@
   min-height: 72px;   /* 約3行 */
   max-height: 120px;
 }
+
+/* ▼備考ドック（下固定：InputBarの上に載せる） */
+#notesDock{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 70px; /* InputBarの高さぶん上げる（後で微調整OK） */
+  z-index: 9998;
+  background: rgba(250,250,250,0.96);
+  border-top: 1px solid #ddd;
+  padding: 10px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  backdrop-filter: blur(6px);
+}
+
+/* 3行くらいのコンパクト備考 */
+#notesDock textarea{
+  flex: 1;
+  min-height: 72px;
+  max-height: 140px;
+  resize: none;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  padding: 8px 10px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  box-sizing: border-box;
+  outline: none;
+}
+
+/* 備考の保存ボタン */
+#notesDock button{
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: none;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* バックアップUIは横幅があるので折り返し */
+#notesDock #backupArea{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* ▼本文が固定UIに隠れないように下余白を増やす */
+body{
+  padding-bottom: 260px; /* InputBar + 備考ドックぶん（後で調整OK） */
+}
+
 </style>
 </head>
 <body>
@@ -270,11 +326,12 @@
 
 <div id="entries"></div>
 
-<div id="notesArea">
-  <textarea id="notesInput" placeholder="この日の備考・感想など、時間軸関係なく自由に書けます"></textarea>
-  <button id="saveNotes">保存</button>
+<!-- ▼備考パネル（下に固定） -->
+<div id="notesDock">
+  <textarea id="notesInput" placeholder="この日の備考・感想など（時間軸関係なし）"></textarea>
+  <button id="saveNotes" type="button">保存</button>
 
-  <!-- バックアップ -->
+  <!-- バックアップは固定にしない（重いので下に置く） -->
   <div id="backupArea">
     <button id="exportLogday" class="ghostBtn" type="button">全ログをJSONで保存</button>
     <label for="importFile" class="ghostBtn" role="button">JSONを読み込んで復元</label>
