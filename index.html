@@ -10,7 +10,7 @@
     padding:20px;
     line-height:1.6;
     background:#fafafa;
-    padding-bottom: 260px; /* InputBar + 備考ドックぶん */
+    padding-bottom: 260px; /* NotesDock + InputBar のぶん */
   }
 
   h2{margin-bottom:20px;}
@@ -22,7 +22,6 @@
     margin-bottom:8px;
   }
 
-  /* 右側（週/月/設定） */
   #navRight{
     margin-left:auto;
     display:flex;
@@ -30,7 +29,6 @@
     gap:8px;
   }
 
-  /* 左の矢印/今日も少し整える（任意だけどスタイリッシュになる） */
   #prev,#today,#next{
     padding:6px 10px;
     border-radius:10px;
@@ -64,9 +62,6 @@
   #meta{margin-bottom:12px;color:#666;}
   #weather{font-weight:bold;}
   #dayNote{font-size:.9em;margin-top:4px;}
-
-  #ai{margin-top:40px;color:#666;font-size:.9em;}
-  .end{margin-top:30px;font-weight:bold;}
 
   /* ▼カレンダー（月） */
   #calendar{
@@ -113,13 +108,12 @@
   #weekBar button.active{background:#111;color:#fff;border-color:#111;}
   #weekBar button.active .d{color:#fff;opacity:.85;}
 
-  /* ▼表示切替（週/月/設定）スタイリッシュ */
+  /* ▼表示切替（週/月/設定） */
   #viewToggle{
     display:flex;
     gap:8px;
     align-items:center;
   }
-
   #viewToggle button{
     padding:6px 12px;
     border-radius:999px;
@@ -139,8 +133,6 @@
     color:#fff;
     border-color:#111;
   }
-
-  /* 設定ボタン：アイコンだけ */
   #viewToggle button.iconOnly{
     width:36px;
     height:32px;
@@ -181,25 +173,24 @@
   }
 
   #notesDock textarea{
-  flex: 1;
-  min-height: 72px;
-  max-height: 140px;
-  resize: none;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.18);
-  padding: 8px 10px;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  box-sizing: border-box;
-  outline: none;
-  background:#fff;
-  font-size:16px; /* iPhoneズーム対策 */
-}
-
-/* ★必ず“後ろ”に置く（後勝ちで効く） */
-#notesDock.expanded textarea{
-  min-height: 120px;
-  max-height: 220px;
-}
+    flex: 1;
+    min-height: 72px;
+    max-height: 140px;
+    resize: none;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.18);
+    padding: 8px 10px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    outline: none;
+    background:#fff;
+    font-size:16px; /* iPhoneズーム防止 */
+    line-height:1.4;
+  }
+  #notesDock.expanded textarea{
+    min-height: 120px;
+    max-height: 220px;
+  }
 
   #notesDock button{
     height: 34px;
@@ -212,23 +203,32 @@
     white-space: nowrap;
   }
 
-#inputBar{
-  left:0;
-  right:0;
-  bottom:0;
-}
+  /* ▼下から出る入力バー */
+  #inputBar{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    background:#fff;
+    border-top:1px solid #ddd;
+    padding:10px 12px;
+    display:flex;
+    gap:8px;
+    z-index:9999;
+    align-items:flex-end;
+    transition: padding .25s ease, left .25s ease, right .25s ease, bottom .25s ease, border-radius .25s ease;
+    max-height:220px;
+  }
 
-#inputBar.expanded{
-  padding:12px;
-  box-shadow:0 -8px 20px rgba(0,0,0,0.12);
-
-  /* ★ここが“幅アップ感” */
-  left:10px;
-  right:10px;
-  bottom:10px;
-  border-radius:16px;
-  border:1px solid rgba(0,0,0,0.10);
-}
+  #inputBar.expanded{
+    padding:12px;
+    box-shadow:0 -8px 20px rgba(0,0,0,0.12);
+    left:10px;
+    right:10px;
+    bottom:10px;
+    border-radius:16px;
+    border:1px solid rgba(0,0,0,0.10);
+  }
 
   #actionBar{
     display:flex;
@@ -265,8 +265,10 @@
     transition:height .25s ease;
     background:#fff;
     font-size:16px;      /* iPhoneズーム防止 */
-  line-height:1.4;
+    line-height:1.4;
   }
+
+  #inputBar.expanded #logInput{ height:120px; }
 
   #saveBtn{
     padding:0 14px;
@@ -335,43 +337,43 @@
     justify-content:center;
   }
 
+  /* toast */
   #toast{
-  position:fixed;
-  left:50%;
-  bottom:140px;
-  transform:translateX(-50%);
-  background:#111;
-  color:#fff;
-  padding:10px 18px;
-  border-radius:999px;
-  font-size:14px;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .25s ease, transform .25s ease;
-  z-index:30000;
-}
+    position:fixed;
+    left:50%;
+    bottom:140px;
+    transform:translateX(-50%);
+    background:#111;
+    color:#fff;
+    padding:10px 18px;
+    border-radius:999px;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+    z-index:30000;
+  }
+  #toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(-4px);
+  }
 
-#toast.show{
-  opacity:1;
-  transform:translateX(-50%) translateY(-4px);
-}
+  /* time input（透明で時計ボタンの位置に重ねる） */
+  #logTime{
+    position:absolute;
+    bottom:10px;
+    left:12px;
+    width:36px;
+    height:34px;
+    opacity:0;
+    z-index:10001;
+  }
 
-#logTime{
-  position:absolute;
-  bottom:10px;        /* inputBarの高さに合わせる */
-  left:12px;          /* 時計ボタンの位置 */
-  width:36px;
-  height:34px;
-  opacity:0;          /* 見えない */
-  z-index:10001;
-}
-
-/* iPhoneの“タップが怪しい”対策：1タップを安定させる */
-#timeBtn{
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
+  /* iPhoneの“タップが怪しい”対策 */
+  #timeBtn{
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
 </style>
 </head>
 <body>
@@ -405,19 +407,14 @@
 
 <div id="entries"></div>
 
-<!-- ▼備考ドック（固定） -->
+<!-- ▼備考ドック -->
 <div id="notesDock">
   <textarea id="notesInput" placeholder="この日の備考・感想など（時間軸関係なし）"></textarea>
   <button id="saveNotes" type="button">保存</button>
 </div>
 
-<div id="ai"></div>
-<div id="endNote" class="end"></div>
-
-
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
-  <!-- 時計ボタン（見た目） -->
   <label class="iconBtn" id="timeBtn" for="logTime" title="時間" role="button" aria-label="時間">🕒</label>
 
   <div id="actionBar">
@@ -429,15 +426,7 @@
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
 
-  <!-- 実体：時間入力（非表示） -->
   <input id="logTime" type="time">
-
-  <input id="pickPhotoInput" class="fileInput" type="file" accept="image/*">
-  <input id="takePhotoInput" class="fileInput" type="file" accept="image/*" capture="environment">
-</div>
-
-  <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
-  <button id="saveBtn" type="button">保存</button>
 
   <input id="pickPhotoInput" class="fileInput" type="file" accept="image/*">
   <input id="takePhotoInput" class="fileInput" type="file" accept="image/*" capture="environment">
@@ -460,6 +449,8 @@
     </div>
   </div>
 </div>
+
+<div id="toast">保存しました</div>
 
 <script>
 let viewMode = 'week';
@@ -503,6 +494,13 @@ function saveDayData(dateKey, dayData){
 }
 function sortEntries(dayData){
   dayData.entries.sort((a,b) => (a.time || '').localeCompare(b.time || ''));
+}
+
+function showToast(message){
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1200);
 }
 
 /* week bar */
@@ -664,38 +662,33 @@ document.getElementById('today').onclick = () => {
   renderWeekBar(currentDate);
 };
 
-// ▼備考ドック制御
+/* notes dock */
 const notesDock = document.getElementById('notesDock');
 const notesInput = document.getElementById('notesInput');
 const saveNotesBtn = document.getElementById('saveNotes');
 
-// 備考をタップしたら少し拡大
-notesInput.addEventListener('focus', () => {
-  notesDock.classList.add('expanded');
-});
+notesInput.addEventListener('focus', () => notesDock.classList.add('expanded'));
+notesInput.addEventListener('blur',  () => notesDock.classList.remove('expanded'));
 
-// 備考からフォーカスが外れたら元に戻す
-notesInput.addEventListener('blur', () => {
-  notesDock.classList.remove('expanded');
-});
-
-/* notes save */
 saveNotesBtn.onclick = () => {
-  const notes = notesInput.value;
   const dayData = getDayData(currentDate);
-  dayData.notes = notes;
+  dayData.notes = notesInput.value;
   saveDayData(currentDate, dayData);
 
-  collapseNotesDock();
+  notesDock.classList.remove('expanded');
   notesInput.blur();
-
-  showToast("保存しました");
+  showToast('保存しました');
 };
 
-/* bottom bar */
+/* input bar */
 const inputBar = document.getElementById('inputBar');
 const logInput = document.getElementById('logInput');
 const saveBtn  = document.getElementById('saveBtn');
+
+function collapseInputBar(){
+  inputBar.classList.remove('expanded');
+  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
+}
 
 logInput.addEventListener('focus', () => {
   inputBar.classList.add('expanded');
@@ -703,16 +696,7 @@ logInput.addEventListener('focus', () => {
 });
 logInput.addEventListener('blur', () => collapseInputBar());
 
-function collapseInputBar(){
-  inputBar.classList.remove('expanded');
-  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
-}
-
-function collapseNotesDock(){
-  notesDock.classList.remove('expanded');
-  requestAnimationFrame(() => notesDock.classList.remove('expanded'));
-}
-
+// Enter送信（Shift+Enterで改行）
 logInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -721,36 +705,40 @@ logInput.addEventListener('keydown', (e) => {
 });
 
 saveBtn.addEventListener('click', () => {
-  const dateKey = currentDate;
   const text = logInput.value.trim();
-  if (!text) return;
+  if (!text) { collapseInputBar(); logInput.blur(); return; }
 
   const timeInput = document.getElementById('logTime');
   const time = timeInput.value || new Date().toTimeString().slice(0,5);
 
-  const dayData = getDayData(dateKey);
+  const dayData = getDayData(currentDate);
   dayData.entries.push({ time, text });
-
   sortEntries(dayData);
-  saveDayData(dateKey, dayData);
-  loadDay(dateKey);
+  saveDayData(currentDate, dayData);
+  loadDay(currentDate);
 
   logInput.value = '';
   collapseInputBar();
   logInput.blur();
+  showToast('保存しました');
+});
+
+/* outside tap to close */
+document.addEventListener('pointerdown', (e) => {
+  if (document.activeElement !== logInput) return;
+  if (inputBar.contains(e.target)) return;
+  logInput.blur();
+  collapseInputBar();
+});
+
+/* plus */
+document.getElementById('plusBtn').addEventListener('click', () => {
+  showToast('＋：将来的に拡張予定');
 });
 
 /* photo */
-document.getElementById('plusBtn').addEventListener('click', () => {
-  alert('＋：将来的に 位置情報 / ファイル / カレンダー を入れる予定');
-});
-
 const pickPhotoInput = document.getElementById('pickPhotoInput');
 const takePhotoInput = document.getElementById('takePhotoInput');
-
-const timeBtn = document.getElementById('timeBtn');
-const logTime = document.getElementById('logTime');
-
 
 function fileToDataURL(file){
   return new Promise((resolve, reject) => {
@@ -764,21 +752,20 @@ function fileToDataURL(file){
 async function handlePickedImage(file){
   if(!file) return;
 
-  const dateKey = currentDate;
   const timeInput = document.getElementById('logTime');
   const time = timeInput.value || new Date().toTimeString().slice(0,5);
-
   const photoDataUrl = await fileToDataURL(file);
 
-  const dayData = getDayData(dateKey);
+  const dayData = getDayData(currentDate);
   dayData.entries.push({ time, text: '📷 写真', photo: photoDataUrl });
 
   sortEntries(dayData);
-  saveDayData(dateKey, dayData);
-  loadDay(dateKey);
+  saveDayData(currentDate, dayData);
+  loadDay(currentDate);
 
   collapseInputBar();
   logInput.blur();
+  showToast('写真を追加しました');
 }
 
 [pickPhotoInput, takePhotoInput].forEach(inp => {
@@ -786,6 +773,29 @@ async function handlePickedImage(file){
     handlePickedImage(e.target.files && e.target.files[0]);
     e.target.value = '';
   });
+});
+
+/* settings modal */
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const closeSettings = document.getElementById('closeSettings');
+const settingsBackdrop = document.getElementById('settingsBackdrop');
+
+function openSettings(){
+  settingsModal.classList.add('open');
+  settingsModal.setAttribute('aria-hidden','false');
+}
+function closeSettingsModal(){
+  settingsModal.classList.remove('open');
+  settingsModal.setAttribute('aria-hidden','true');
+}
+
+settingsBtn.onclick = openSettings;
+closeSettings.onclick = closeSettingsModal;
+settingsBackdrop.onclick = closeSettingsModal;
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSettingsModal();
 });
 
 /* backup: export/import */
@@ -813,7 +823,7 @@ document.getElementById("exportLogday").onclick = () => {
 
       const dateKeyRe = /^\d{4}-\d{2}-\d{2}$/;
       const dateKeys = Object.keys(data || {}).filter(k => dateKeyRe.test(k));
-      if (dateKeys.length === 0) { alert("バックアップファイルが違うかも。"); return; }
+      if (dateKeys.length === 0) { showToast("バックアップ形式が違うかも"); return; }
 
       if (!confirm(`データを復元するよ（${dateKeys.length}日分）\n同じ日付は上書き。\n実行する？`)) return;
 
@@ -830,57 +840,10 @@ document.getElementById("exportLogday").onclick = () => {
   input.addEventListener("input", handler);
 })();
 
-/* settings modal */
-const settingsBtn = document.getElementById('settingsBtn');
-const settingsModal = document.getElementById('settingsModal');
-const closeSettings = document.getElementById('closeSettings');
-const settingsBackdrop = document.getElementById('settingsBackdrop');
-
-function openSettings(){
-  settingsModal.classList.add('open');
-  settingsModal.setAttribute('aria-hidden','false');
-}
-function closeSettingsModal(){
-  settingsModal.classList.remove('open');
-  settingsModal.setAttribute('aria-hidden','true');
-}
-
-settingsBtn.onclick = openSettings;
-closeSettings.onclick = closeSettingsModal;
-settingsBackdrop.onclick = closeSettingsModal;
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeSettingsModal();
-});
-
-function showToast(message){
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.classList.add('show');
-
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 1200);
-}
-
-document.addEventListener('pointerdown', (e) => {
-  // 入力中ではないなら無視
-  if (document.activeElement !== logInput) return;
-
-  // inputBar内を触ってるなら無視（操作中）
-  if (inputBar.contains(e.target)) return;
-
-  // 外側を触った＝閉じたい意図
-  logInput.blur();
-  collapseInputBar();
-});
-
 /* init */
 generateCalendar();
 showWeek();
 </script>
-
-<div id="toast">保存しました</div>
 
 </body>
 </html>
