@@ -247,9 +247,7 @@
   backdrop-filter: blur(10px);
 }
 
-#inputBar.expanded #logInput{
-  height:120px;
-}
+
 
   #actionBar{
     display:flex;
@@ -378,6 +376,33 @@
     opacity:1;
     transform:translateX(-50%) translateY(-4px);
   }
+
+  /* 入力欄の“アップ”を主役にする */
+#logInput{
+  transition: height .25s ease, max-height .25s ease, padding .25s ease, font-size .25s ease;
+}
+
+/* expanded時：入力欄だけ気持ちよく広がる */
+#inputBar.expanded #logInput{
+  height: 120px;        /* まずはここ */
+  max-height: 180px;    /* もっと伸びてもいい */
+  padding: 10px 12px;
+  font-size: 16px;      /* iPhoneズーム防止にもなる */
+  line-height: 1.5;
+}
+
+/* expanded時：入力欄を“幅いっぱい”にしたい */
+#inputBar.expanded{
+  padding: 10px 12px;   /* 箱は増やしすぎない */
+}
+
+/* ボタン群を少し上に寄せて、入力欄が主役になる */
+#inputBar.expanded #actionBar,
+#inputBar.expanded #saveBtn,
+#inputBar.expanded #timeBtn{
+  transform: translateY(-2px);
+  transition: transform .25s ease;
+}
 
   /* time input（透明で時計ボタンの位置に重ねる） */
   #logTime{
