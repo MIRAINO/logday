@@ -305,16 +305,17 @@ body{
   position:fixed;
   left:0;
   right:0;
-  bottom:-100%;
+  bottom:0;
+  transform: translateY(100%);
   background:#fff;
   border-top:1px solid #ddd;
   padding:20px;
-  transition:bottom .3s ease;
+  transition: transform .3s ease;
   z-index:10000;
 }
 
 #settingsPanel.open{
-  bottom:0;
+  transform: translateY(0);
 }
 
 </style>
