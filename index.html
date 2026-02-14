@@ -354,19 +354,13 @@
   transform:translateX(-50%) translateY(-4px);
 }
 
-/* time inputは“見えないが存在”させる（hiddenは使わない） */
 #logTime{
-  position: absolute;
-  left: 12px;          /* inputBar左端付近でOK */
-  bottom: 10px;        /* inputBar内の高さに合わせる */
-  width: 36px;
-  height: 34px;
-  opacity: 0;
-  border: none;
-  padding: 0;
-  margin: 0;
-  z-index: 10001;      /* inputBarより上ならOK */
-  pointer-events: none; /* ←通常はクリックさせない */
+  position:absolute;
+  left:-10000px;
+  top:-10000px;
+  width:1px;
+  height:1px;
+  opacity:0;
 }
 
 </style>
@@ -415,7 +409,7 @@
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
   <!-- 時計ボタン（見た目） -->
-  <button class="iconBtn" id="timeBtn" type="button" title="時間">🕒</button>
+  <label class="iconBtn" id="timeBtn" for="logTime" title="時間" role="button" aria-label="時間">🕒</label>
 
   <div id="actionBar">
     <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
@@ -427,7 +421,7 @@
   <button id="saveBtn" type="button">保存</button>
 
   <!-- 実体：時間入力（非表示） -->
-  <input id="logTime" type="time" aria-hidden="true">
+  <input id="logTime" type="time">
 
   <input id="pickPhotoInput" class="fileInput" type="file" accept="image/*">
   <input id="takePhotoInput" class="fileInput" type="file" accept="image/*" capture="environment">
@@ -745,28 +739,6 @@ const takePhotoInput = document.getElementById('takePhotoInput');
 
 const timeBtn = document.getElementById('timeBtn');
 const logTime = document.getElementById('logTime');
-
-timeBtn.addEventListener('click', async () => {
-  // 一瞬だけ操作可能にする（iOSの挙動安定）
-  logTime.style.pointerEvents = 'auto';
-
-  // iOSでフォーカスが飛ばないように、今の値が空なら一応入れておく（任意）
-  if (!logTime.value) logTime.value = new Date().toTimeString().slice(0,5);
-
-  // 可能なら showPicker()（対応ブラウザで最強）
-  if (typeof logTime.showPicker === 'function') {
-    logTime.showPicker();
-  } else {
-    // iOS/Safari向けの定番
-    logTime.focus();
-    logTime.click();
-  }
-
-  // すぐ戻す
-  setTimeout(() => {
-    logTime.style.pointerEvents = 'none';
-  }, 400);
-});
 
 
 function fileToDataURL(file){
