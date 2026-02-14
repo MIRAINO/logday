@@ -293,6 +293,30 @@ body{
   padding-bottom: 260px; /* InputBar + 備考ドックぶん（後で調整OK） */
 }
 
+#settingsBtn{
+  margin-left:8px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  background:#fff;
+  cursor:pointer;
+}
+
+#settingsPanel{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:-100%;
+  background:#fff;
+  border-top:1px solid #ddd;
+  padding:20px;
+  transition:bottom .3s ease;
+  z-index:10000;
+}
+
+#settingsPanel.open{
+  bottom:0;
+}
+
 </style>
 </head>
 <body>
@@ -301,6 +325,7 @@ body{
   <button id="prev">←</button>
   <button id="today">今日</button>
   <button id="next">→</button>
+  <button id="settingsBtn">⚙︎</button>
 
   <div id="viewToggle">
     <button id="weekBtn" class="active">週</button>
@@ -331,13 +356,7 @@ body{
   <textarea id="notesInput" placeholder="この日の備考・感想など（時間軸関係なし）"></textarea>
   <button id="saveNotes" type="button">保存</button>
 
-  <!-- バックアップは固定にしない（重いので下に置く） -->
-  <div id="backupArea">
-    <button id="exportLogday" class="ghostBtn" type="button">全ログをJSONで保存</button>
-    <label for="importFile" class="ghostBtn" role="button">JSONを読み込んで復元</label>
-    <input id="importFile" class="fileInput" type="file" accept="application/json" />
-  </div>
-</div>
+
 
 <div id="ai"></div>
 <div id="endNote" class="end"></div>
@@ -365,6 +384,19 @@ body{
 
   <input id="pickPhotoInput" class="fileInput" type="file" accept="image/*">
   <input id="takePhotoInput" class="fileInput" type="file" accept="image/*" capture="environment">
+</div>
+
+<div id="settingsPanel">
+  <h3>設定</h3>
+
+  <button id="exportLogday" class="ghostBtn">データを書き出す</button>
+
+  <label class="ghostBtn">
+    データを復元する
+    <input id="importFile" class="fileInput" type="file" accept="application/json">
+  </label>
+
+  <button id="closeSettings" class="ghostBtn">閉じる</button>
 </div>
 
 <script>
@@ -765,8 +797,26 @@ document.getElementById("exportLogday").onclick = () => {
 /* =========================
    init
 ========================= */
+
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const closeSettings = document.getElementById('closeSettings');
+
+settingsBtn.onclick = () => {
+  settingsPanel.classList.add('open');
+};
+
+closeSettings.onclick = () => {
+  settingsPanel.classList.remove('open');
+};
+
 generateCalendar();
 showWeek();
+
+generateCalendar();
+showWeek();
+
+
 </script>
 
 </body>
