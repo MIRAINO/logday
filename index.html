@@ -421,17 +421,6 @@
     touch-action: manipulation;
   }
 
-  /* ☑️ボタンは通常は隠す */
-#doneBtn{
-  display:none;
-  height:34px;
-  padding:0 12px;
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,0.14);
-  background:#fff;
-  cursor:pointer;
-}
-
 /* expanded中：左のボタン群を消して、入力欄を主役に */
 #inputBar.expanded #actionBar,
 #inputBar.expanded #timeBtn,
@@ -439,12 +428,7 @@
   display:none !important;
 }
 
-/* expanded中：☑️ボタンを出す */
-#inputBar.expanded #doneBtn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-}
+
 
 /* expanded中：入力欄を横に広げる */
 #inputBar.expanded{
@@ -518,7 +502,7 @@
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
-  <button id="doneBtn" type="button" aria-label="閉じる" title="閉じる">☑️</button>
+  
   <input id="logTime" type="time">
 
   <input id="pickPhotoInput" class="fileInput" type="file" accept="image/*">
@@ -963,6 +947,21 @@ doneBtn.addEventListener('click', () => {
 saveBtn.addEventListener('click', () => {
   // 既存の保存処理が走ったあと…
   closeComposer();
+});
+
+function closeComposer(){
+  inputBar.classList.remove('expanded');
+  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
+}
+
+logInput.addEventListener('blur', closeComposer);
+
+logInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    saveBtn.click();     // 保存
+    logInput.blur();     // ← これが重要
+  }
 });
 
 /* init */
