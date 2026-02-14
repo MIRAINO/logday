@@ -180,24 +180,26 @@
     backdrop-filter: blur(6px);
   }
 
-  #notesDock.expanded textarea{
-  max-height: 220px;
-  min-height: 120px;
-  }
-
   #notesDock textarea{
-    flex: 1;
-    min-height: 72px;
-    max-height: 140px;
-    resize: none;
-    border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.18);
-    padding: 8px 10px;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    box-sizing: border-box;
-    outline: none;
-    background:#fff;
-  }
+  flex: 1;
+  min-height: 72px;
+  max-height: 140px;
+  resize: none;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.18);
+  padding: 8px 10px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  box-sizing: border-box;
+  outline: none;
+  background:#fff;
+  font-size:16px; /* iPhoneズーム対策 */
+}
+
+/* ★必ず“後ろ”に置く（後勝ちで効く） */
+#notesDock.expanded textarea{
+  min-height: 120px;
+  max-height: 220px;
+}
 
   #notesDock button{
     height: 34px;
@@ -394,15 +396,27 @@
 <div id="ai"></div>
 <div id="endNote" class="end"></div>
 
+
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
-  <input id="logTime" type="time"
-    style="width:80px;height:34px;border-radius:12px;border:1px solid rgba(0,0,0,0.18);padding:4px;background:#fff;">
+  <!-- 時計ボタン（見た目） -->
+  <button class="iconBtn" id="timeBtn" type="button" title="時間">🕒</button>
+
   <div id="actionBar">
     <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
     <label class="iconBtn" for="takePhotoInput" title="カメラ" role="button">📷</label>
     <label class="iconBtn" for="pickPhotoInput" title="写真" role="button">🖼️</label>
   </div>
+
+  <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
+  <button id="saveBtn" type="button">保存</button>
+
+  <!-- 実体：時間入力（非表示） -->
+  <input id="logTime" type="time" hidden>
+
+  <input id="pickPhotoInput" class="fileInput" type="file" accept="image/*">
+  <input id="takePhotoInput" class="fileInput" type="file" accept="image/*" capture="environment">
+</div>
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
@@ -654,10 +668,7 @@ saveNotesBtn.onclick = () => {
   dayData.notes = notes;
   saveDayData(currentDate, dayData);
 
-  // 強制縮小（2回実行でiOS対策）
-  notesDock.classList.remove('expanded');
-  requestAnimationFrame(() => notesDock.classList.remove('expanded'));
-
+  collapseNotesDock();
   notesInput.blur();
 
   showToast("保存しました");
@@ -716,6 +727,19 @@ document.getElementById('plusBtn').addEventListener('click', () => {
 
 const pickPhotoInput = document.getElementById('pickPhotoInput');
 const takePhotoInput = document.getElementById('takePhotoInput');
+
+const timeBtn = document.getElementById('timeBtn');
+const logTime = document.getElementById('logTime');
+
+timeBtn.addEventListener('click', () => {
+  logTime.focus();
+  logTime.click();
+});
+
+// 時間が選ばれたら、ボタンの見た目をちょい反映（任意）
+logTime.addEventListener('change', () => {
+  // 例：選択中は🕒を🕒にしたままでもいい。ここでは何もしないでもOK。
+});
 
 function fileToDataURL(file){
   return new Promise((resolve, reject) => {
