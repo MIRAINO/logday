@@ -938,11 +938,6 @@ function closeComposer(){
 // フォーカスしたら開く
 logInput.addEventListener('focus', openComposer);
 
-// ☑️は「入力せず閉じる」
-doneBtn.addEventListener('click', () => {
-  closeComposer();
-});
-
 // 保存の最後でも閉じる（あなたの保存処理の末尾に入れてOK）
 saveBtn.addEventListener('click', () => {
   // 既存の保存処理が走ったあと…
