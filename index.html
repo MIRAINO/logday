@@ -212,20 +212,23 @@
     white-space: nowrap;
   }
 
-  /* ▼下から出る入力バー */
-  #inputBar{
-    position:fixed;
-    left:0; right:0; bottom:0;
-    background:#fff;
-    border-top:1px solid #ddd;
-    padding:10px 12px;
-    display:flex;
-    gap:8px;
-    z-index:9999;
-    align-items:flex-end;
-    transition:padding .25s ease;
-    max-height:220px;
-  }
+#inputBar{
+  left:0;
+  right:0;
+  bottom:0;
+}
+
+#inputBar.expanded{
+  padding:12px;
+  box-shadow:0 -8px 20px rgba(0,0,0,0.12);
+
+  /* ★ここが“幅アップ感” */
+  left:10px;
+  right:10px;
+  bottom:10px;
+  border-radius:16px;
+  border:1px solid rgba(0,0,0,0.10);
+}
 
   #actionBar{
     display:flex;
@@ -274,9 +277,6 @@
     color:#fff;
     cursor:pointer;
   }
-
-  #inputBar.expanded{padding:12px;box-shadow:0 -8px 20px rgba(0,0,0,0.12);}
-  #inputBar.expanded #logInput{height:120px;}
 
   .fileInput{
     position:fixed;
@@ -697,21 +697,15 @@ const inputBar = document.getElementById('inputBar');
 const logInput = document.getElementById('logInput');
 const saveBtn  = document.getElementById('saveBtn');
 
-logInput.addEventListener('focus', () => inputBar.classList.add('expanded'));
+logInput.addEventListener('focus', () => {
+  inputBar.classList.add('expanded');
+  requestAnimationFrame(() => inputBar.classList.add('expanded'));
+});
 logInput.addEventListener('blur', () => collapseInputBar());
 
 function collapseInputBar(){
   inputBar.classList.remove('expanded');
-
-  // iOS対策：描画更新を強制（幅戻らない対策）
-  requestAnimationFrame(() => {
-    inputBar.classList.remove('expanded');
-
-    // 強制リフロー（再計算させる）
-    inputBar.style.display = 'none';
-    void inputBar.offsetHeight; // ←これが効く
-    inputBar.style.display = 'flex';
-  });
+  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
 }
 
 function collapseNotesDock(){
