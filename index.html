@@ -696,12 +696,17 @@ const logInput = document.getElementById('logInput');
 const saveBtn  = document.getElementById('saveBtn');
 
 logInput.addEventListener('focus', () => inputBar.classList.add('expanded'));
-logInput.addEventListener('blur',  () => inputBar.classList.remove('expanded'));
+logInput.addEventListener('blur', () => {
+  collapseInputBar();
+});
 
 function collapseInputBar(){
   inputBar.classList.remove('expanded');
-  // 連続タップでも確実に戻す（iOS対策）
+
+  // iOS対策：レイアウトが確定した後にもう一回
   requestAnimationFrame(() => inputBar.classList.remove('expanded'));
+  setTimeout(() => inputBar.classList.remove('expanded'), 0);
+  setTimeout(() => inputBar.classList.remove('expanded'), 120);
 }
 
 function collapseNotesDock(){
@@ -858,6 +863,18 @@ function showToast(message){
     toast.classList.remove('show');
   }, 1200);
 }
+
+document.addEventListener('pointerdown', (e) => {
+  // 入力中ではないなら無視
+  if (document.activeElement !== logInput) return;
+
+  // inputBar内を触ってるなら無視（操作中）
+  if (inputBar.contains(e.target)) return;
+
+  // 外側を触った＝閉じたい意図
+  logInput.blur();
+  collapseInputBar();
+});
 
 /* init */
 generateCalendar();
