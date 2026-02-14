@@ -301,21 +301,49 @@ body{
   cursor:pointer;
 }
 
-#settingsPanel{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  transform: translateY(100%);
-  background:#fff;
-  border-top:1px solid #ddd;
-  padding:20px;
-  transition: transform .3s ease;
-  z-index:10000;
+/* ▼設定モーダル（ポップアップ） */
+#settingsModal{
+  position: fixed;
+  inset: 0;
+  display: none;              /* ←最初は完全に非表示 */
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
 }
 
-#settingsPanel.open{
-  transform: translateY(0);
+#settingsModal.open{
+  display: flex;
+}
+
+#settingsBackdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+}
+
+#settingsPanel{
+  position: relative;
+  width: min(520px, calc(100% - 32px));
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+  padding: 16px;
+}
+
+#settingsPanel h3{
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+#settingsPanel .row{
+  display:flex;
+  gap:10px;
+  flex-wrap: wrap;
+}
+
+#settingsPanel .ghostBtn{
+  padding:10px 12px;
+  border-radius:12px;
 }
 
 </style>
@@ -387,17 +415,23 @@ body{
   <input id="takePhotoInput" class="fileInput" type="file" accept="image/*" capture="environment">
 </div>
 
-<div id="settingsPanel">
-  <h3>設定</h3>
+<div id="settingsModal" aria-hidden="true">
+  <div id="settingsBackdrop"></div>
 
-  <button id="exportLogday" class="ghostBtn">データを書き出す</button>
+  <div id="settingsPanel" role="dialog" aria-modal="true" aria-label="設定">
+    <h3>設定</h3>
 
-  <label class="ghostBtn">
-    データを復元する
-    <input id="importFile" class="fileInput" type="file" accept="application/json">
-  </label>
+    <div class="row">
+      <button id="exportLogday" class="ghostBtn" type="button">データを書き出す</button>
 
-  <button id="closeSettings" class="ghostBtn">閉じる</button>
+      <label class="ghostBtn" role="button">
+        データを復元する
+        <input id="importFile" class="fileInput" type="file" accept="application/json" />
+      </label>
+
+      <button id="closeSettings" class="ghostBtn" type="button">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -800,19 +834,28 @@ document.getElementById("exportLogday").onclick = () => {
 ========================= */
 
 const settingsBtn = document.getElementById('settingsBtn');
-const settingsPanel = document.getElementById('settingsPanel');
+const settingsModal = document.getElementById('settingsModal');
 const closeSettings = document.getElementById('closeSettings');
+const settingsBackdrop = document.getElementById('settingsBackdrop');
 
-settingsBtn.onclick = () => {
-  settingsPanel.classList.add('open');
-};
+function openSettings(){
+  settingsModal.classList.add('open');
+  settingsModal.setAttribute('aria-hidden','false');
+}
 
-closeSettings.onclick = () => {
-  settingsPanel.classList.remove('open');
-};
+function closeSettingsModal(){
+  settingsModal.classList.remove('open');
+  settingsModal.setAttribute('aria-hidden','true');
+}
 
-generateCalendar();
-showWeek();
+settingsBtn.onclick = openSettings;
+closeSettings.onclick = closeSettingsModal;
+settingsBackdrop.onclick = closeSettingsModal;
+
+// ESCで閉じる（PC向け）
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSettingsModal();
+});
 
 generateCalendar();
 showWeek();
