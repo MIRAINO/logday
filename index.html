@@ -204,50 +204,44 @@
   }
 
   /* ▼下から出る入力バー */
-#inputBar{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
+  #inputBar{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    margin:0;
+    width:auto;
 
-  margin:0;                 /* ★追加：通常状態を明示 */
-  width:auto;               /* ★追加 */
+    background:#fff;
+    border-top:1px solid #ddd;
+    padding:10px 12px;
+    display:flex;
+    gap:8px;
+    z-index:9999;
+    align-items:flex-end;
 
-  background:#fff;
-  border-top:1px solid #ddd;
-  padding:10px 12px;
-  display:flex;
-  gap:8px;
-  z-index:9999;
-  align-items:flex-end;
+    transition: margin .25s ease, padding .25s ease, border-radius .25s ease, box-shadow .25s ease;
+    max-height:220px;
 
-  /* ★margin も transition 対象に入れる */
-  transition: margin .25s ease, padding .25s ease, border-radius .25s ease, box-shadow .25s ease;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+  }
 
-  max-height:220px;
+  /* ★ expanded はこれ1個だけに統一（後勝ち事故を消す） */
+  #inputBar.expanded{
+    margin: 0 12px 12px;
+    border-radius:16px;
 
-  /* 追加：通常でも境界がわかるように */
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
-}
+    border-top:none;
+    border:1px solid rgba(0,0,0,0.10);
 
-#inputBar.expanded{
-  margin: 0 16px 12px;
-  border-radius:16px;
+    padding:12px;
+    gap:10px;
 
-  border-top:none;
-  border:1px solid rgba(0,0,0,0.10);
-
-  padding:12px;
-
-  /* 影は1回だけ */
-  box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
-
-  transform: translateY(-2px);
-  background: rgba(255,255,255,0.98);
-  backdrop-filter: blur(10px);
-}
-
-
+    box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
+    transform: translateY(-2px);
+    background: rgba(255,255,255,0.98);
+    backdrop-filter: blur(10px);
+  }
 
   #actionBar{
     display:flex;
@@ -281,13 +275,12 @@
     width:100%;
     box-sizing:border-box;
     outline:none;
-    transition:height .25s ease;
     background:#fff;
-    font-size:16px;      /* iPhoneズーム防止 */
+    font-size:16px;
     line-height:1.4;
-  }
 
-  
+    transition: height .25s ease, max-height .25s ease, padding .25s ease;
+  }
 
   #saveBtn{
     padding:0 14px;
@@ -297,6 +290,7 @@
     background:#111;
     color:#fff;
     cursor:pointer;
+    white-space: nowrap;
   }
 
   .fileInput{
@@ -305,6 +299,36 @@
     left:-10000px;
     width:1px;height:1px;
     opacity:0;
+  }
+
+  /* expanded中：左のボタン群を消して入力欄を主役に */
+  #inputBar.expanded #actionBar,
+  #inputBar.expanded #timeBtn,
+  #inputBar.expanded #logTime{
+    display:none !important;
+  }
+
+  #inputBar.expanded #logInput{
+    height: 120px;
+    max-height: 180px;
+    padding: 10px 12px;
+    line-height: 1.5;
+  }
+
+  /* time input（透明で時計ボタンの位置に重ねる） */
+  #logTime{
+    position:absolute;
+    bottom:10px;
+    left:12px;
+    width:36px;
+    height:34px;
+    opacity:0;
+    z-index:10001;
+  }
+
+  #timeBtn{
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   /* ▼設定モーダル */
@@ -376,81 +400,6 @@
     opacity:1;
     transform:translateX(-50%) translateY(-4px);
   }
-
-  /* 入力欄の“アップ”を主役にする */
-#logInput{
-  transition: height .25s ease, max-height .25s ease, padding .25s ease, font-size .25s ease;
-}
-
-/* expanded時：入力欄だけ気持ちよく広がる */
-#inputBar.expanded #logInput{
-  height: 120px;        /* まずはここ */
-  max-height: 180px;    /* もっと伸びてもいい */
-  padding: 10px 12px;
-  font-size: 16px;      /* iPhoneズーム防止にもなる */
-  line-height: 1.5;
-}
-
-/* expanded時：入力欄を“幅いっぱい”にしたい */
-#inputBar.expanded{
-  padding: 10px 12px;   /* 箱は増やしすぎない */
-}
-
-/* ボタン群を少し上に寄せて、入力欄が主役になる */
-#inputBar.expanded #actionBar,
-#inputBar.expanded #saveBtn,
-#inputBar.expanded #timeBtn{
-  transform: translateY(-2px);
-  transition: transform .25s ease;
-}
-
-  /* time input（透明で時計ボタンの位置に重ねる） */
-  #logTime{
-    position:absolute;
-    bottom:10px;
-    left:12px;
-    width:36px;
-    height:34px;
-    opacity:0;
-    z-index:10001;
-  }
-
-  /* iPhoneの“タップが怪しい”対策 */
-  #timeBtn{
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-
-/* expanded中：左のボタン群を消して、入力欄を主役に */
-#inputBar.expanded #actionBar,
-#inputBar.expanded #timeBtn,
-#inputBar.expanded #logTime{
-  display:none !important;
-}
-
-
-
-/* expanded中：入力欄を横に広げる */
-#inputBar.expanded{
-  margin: 0 12px 12px;     /* 端まで寄せて“広がった感” */
-  border-radius:16px;
-  border:1px solid rgba(0,0,0,0.10);
-  box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
-  padding:12px;
-  gap:10px;
-}
-
-/* expanded中：logInputが横幅を全部取る */
-#inputBar.expanded #logInput{
-  flex:1;
-  width:100%;
-  height:120px;
-  max-height:180px;
-  padding:10px 12px;
-  font-size:16px;      /* iPhoneズーム防止 */
-  line-height:1.5;
-}
-
 </style>
 </head>
 <body>
@@ -502,9 +451,8 @@
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
-  
-  <input id="logTime" type="time">
 
+  <input id="logTime" type="time">
   <input id="pickPhotoInput" class="fileInput" type="file" accept="image/*">
   <input id="takePhotoInput" class="fileInput" type="file" accept="image/*" capture="environment">
 </div>
@@ -769,11 +717,9 @@ function collapseInputBar(){
 
 logInput.addEventListener('focus', () => {
   inputBar.classList.add('expanded');
-  console.log('expanded on'); 
   requestAnimationFrame(() => inputBar.classList.add('expanded'));
 });
 logInput.addEventListener('blur', () => {
-  console.log('expanded off'); 
   collapseInputBar();
 });
 
@@ -782,11 +728,14 @@ logInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     saveBtn.click();
+    logInput.blur(); // ★キーボードの完了でも確実に閉じる
   }
 });
 
 saveBtn.addEventListener('click', () => {
   const text = logInput.value.trim();
+
+  // 何も書かずに保存 → 閉じるだけ
   if (!text) { collapseInputBar(); logInput.blur(); return; }
 
   const timeInput = document.getElementById('logTime');
@@ -921,49 +870,10 @@ document.getElementById("exportLogday").onclick = () => {
   input.addEventListener("input", handler);
 })();
 
-const doneBtn = document.getElementById('doneBtn');
-
-function openComposer(){
-  inputBar.classList.add('expanded');
-  // iOSで効きが弱い時の保険
-  requestAnimationFrame(() => inputBar.classList.add('expanded'));
-}
-
-function closeComposer(){
-  inputBar.classList.remove('expanded');
-  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
-  logInput.blur();
-}
-
-// フォーカスしたら開く
-logInput.addEventListener('focus', openComposer);
-
-// 保存の最後でも閉じる（あなたの保存処理の末尾に入れてOK）
-saveBtn.addEventListener('click', () => {
-  // 既存の保存処理が走ったあと…
-  closeComposer();
-});
-
-function closeComposer(){
-  inputBar.classList.remove('expanded');
-  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
-}
-
-logInput.addEventListener('blur', closeComposer);
-
-logInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    saveBtn.click();     // 保存
-    logInput.blur();     // ← これが重要
-  }
-});
-
 /* init */
 generateCalendar();
 showWeek();
 </script>
 
 </body>
-
 </html>
