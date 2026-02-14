@@ -330,6 +330,28 @@
     align-items:center;
     justify-content:center;
   }
+
+  #toast{
+  position:fixed;
+  left:50%;
+  bottom:140px;
+  transform:translateX(-50%);
+  background:#111;
+  color:#fff;
+  padding:10px 18px;
+  border-radius:999px;
+  font-size:14px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s ease, transform .25s ease;
+  z-index:30000;
+}
+
+#toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(-4px);
+}
+
 </style>
 </head>
 <body>
@@ -632,10 +654,13 @@ saveNotesBtn.onclick = () => {
   dayData.notes = notes;
   saveDayData(currentDate, dayData);
 
-  collapseNotesDock();
+  // 強制縮小（2回実行でiOS対策）
+  notesDock.classList.remove('expanded');
+  requestAnimationFrame(() => notesDock.classList.remove('expanded'));
+
   notesInput.blur();
 
-  alert('保存しました！');
+  showToast("保存しました");
 };
 
 /* bottom bar */
@@ -793,10 +818,22 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSettingsModal();
 });
 
+function showToast(message){
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 1200);
+}
+
 /* init */
 generateCalendar();
 showWeek();
 </script>
+
+<div id="toast">保存しました</div>
 
 </body>
 </html>
