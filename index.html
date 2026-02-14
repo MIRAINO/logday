@@ -10,21 +10,42 @@
     padding:20px;
     line-height:1.6;
     background:#fafafa;
-    padding-bottom:90px; /* 下バーに隠れないように */
+    padding-bottom: 260px; /* InputBar + 備考ドックぶん */
   }
+
   h2{margin-bottom:20px;}
 
   #nav{
     display:flex;
     align-items:center;
-    gap:12px;
+    gap:10px;
     margin-bottom:8px;
   }
+
+  /* 右側（週/月/設定） */
+  #navRight{
+    margin-left:auto;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  /* 左の矢印/今日も少し整える（任意だけどスタイリッシュになる） */
+  #prev,#today,#next{
+    padding:6px 10px;
+    border-radius:10px;
+    border:1px solid rgba(0,0,0,0.16);
+    background:rgba(255,255,255,0.9);
+    cursor:pointer;
+    line-height:1;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #prev:active,#today:active,#next:active{ transform: translateY(1px); }
 
   .entry{
     background:#fff;
     padding:10px 12px;
-    border-radius:8px;
+    border-radius:10px;
     box-shadow:0 1px 4px rgba(0,0,0,0.06);
     margin-bottom:12px;
   }
@@ -37,7 +58,7 @@
     margin-top:6px;
     margin-left:60px;
     max-width:100%;
-    border-radius:8px;
+    border-radius:10px;
   }
 
   #meta{margin-bottom:12px;color:#666;}
@@ -56,13 +77,14 @@
   }
   #calendar button{
     padding:6px 0;
-    border-radius:6px;
-    border:1px solid #ccc;
+    border-radius:8px;
+    border:1px solid rgba(0,0,0,0.16);
     background:#fff;
     cursor:pointer;
     font-size:.85em;
+    -webkit-tap-highlight-color: transparent;
   }
-  #calendar button.active{ background:#333; color:#fff; }
+  #calendar button.active{ background:#111; color:#fff; border-color:#111; }
   #calendar.hidden{display:none;}
 
   /* ▼週バー */
@@ -74,12 +96,13 @@
   }
   #weekBar button{
     padding:8px 0;
-    border-radius:10px;
-    border:1px solid #ddd;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.14);
     background:#fff;
     cursor:pointer;
     font-size:.85em;
     line-height:1.1;
+    -webkit-tap-highlight-color: transparent;
   }
   #weekBar button .d{
     display:block;
@@ -87,46 +110,102 @@
     color:#666;
     margin-top:2px;
   }
-  #weekBar button.active{background:#333;color:#fff;}
+  #weekBar button.active{background:#111;color:#fff;border-color:#111;}
   #weekBar button.active .d{color:#fff;opacity:.85;}
 
-  /* ▼表示切替 */
+  /* ▼表示切替（週/月/設定）スタイリッシュ */
   #viewToggle{
-    margin-left:auto;
     display:flex;
-    gap:4px;
+    gap:8px;
+    align-items:center;
   }
+
   #viewToggle button{
-    padding:4px 10px;
+    padding:6px 12px;
     border-radius:999px;
-    border:1px solid #ccc;
-    background:#fff;
+    border:1px solid rgba(0,0,0,0.18);
+    background:rgba(255,255,255,0.85);
     cursor:pointer;
-    font-size:.85em;
+    font-size:.9em;
+    line-height:1;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .08s ease, background .15s ease, border-color .15s ease;
+    backdrop-filter: blur(6px);
+    letter-spacing: .2px;
   }
-  #viewToggle button.active{background:#333;color:#fff;}
-
-  /* ▼フリースペース */
-  #notesArea{margin-top:12px;}
-  #notesArea textarea{
-    width:100%;
-    min-height:120px;
-    padding:8px;
-    border-radius:6px;
-    border:1px solid #ccc;
-    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  }
-  #notesArea button{
-    margin-top:8px;
-    padding:6px 10px;
-    border-radius:6px;
-    border:none;
-    background:#333;
+  #viewToggle button:active{ transform: translateY(1px); }
+  #viewToggle button.active{
+    background:#111;
     color:#fff;
-    cursor:pointer;
+    border-color:#111;
   }
 
-  /* ▼下から出る入力バー（LINE風） */
+  /* 設定ボタン：アイコンだけ */
+  #viewToggle button.iconOnly{
+    width:36px;
+    height:32px;
+    padding:0;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    font-size:15px;
+  }
+
+  /* ▼空状態 */
+  #entries{ min-height: 42vh; }
+  .emptyState{
+    min-height: 40vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#888;
+    text-align:center;
+    font-size:.95em;
+  }
+
+  /* ▼備考ドック（下固定：InputBarの上） */
+  #notesDock{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 70px;
+    z-index: 9998;
+    background: rgba(250,250,250,0.96);
+    border-top: 1px solid #ddd;
+    padding: 10px 12px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    backdrop-filter: blur(6px);
+  }
+
+  #notesDock textarea{
+    flex: 1;
+    min-height: 72px;
+    max-height: 140px;
+    resize: none;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.18);
+    padding: 8px 10px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    outline: none;
+    background:#fff;
+  }
+
+  #notesDock button{
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 12px;
+    border: none;
+    background: #111;
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* ▼下から出る入力バー */
   #inputBar{
     position:fixed;
     left:0; right:0; bottom:0;
@@ -149,8 +228,8 @@
 
   .iconBtn{
     width:34px;height:34px;
-    border-radius:10px;
-    border:1px solid #ddd;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.14);
     background:#fff;
     cursor:pointer;
     font-size:16px;
@@ -158,6 +237,7 @@
     display:inline-flex;
     align-items:center;
     justify-content:center;
+    -webkit-tap-highlight-color: transparent;
   }
   .iconBtn:active{transform:translateY(1px);}
 
@@ -165,22 +245,23 @@
     flex:1;
     height:36px;
     resize:none;
-    border-radius:10px;
-    border:1px solid #ccc;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.18);
     padding:8px 10px;
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
     width:100%;
     box-sizing:border-box;
     outline:none;
     transition:height .25s ease;
+    background:#fff;
   }
 
   #saveBtn{
     padding:0 14px;
     height:34px;
-    border-radius:10px;
+    border-radius:12px;
     border:none;
-    background:#333;
+    background:#111;
     color:#fff;
     cursor:pointer;
   }
@@ -188,7 +269,6 @@
   #inputBar.expanded{padding:12px;box-shadow:0 -8px 20px rgba(0,0,0,0.12);}
   #inputBar.expanded #logInput{height:120px;}
 
-  /* file input はUIを出さず、機能だけ残す */
   .fileInput{
     position:fixed;
     top:-10000px;
@@ -197,155 +277,54 @@
     opacity:0;
   }
 
-  /* ▼バックアップUI */
-  #backupArea{
-    margin-top:16px;
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    align-items:center;
+  /* ▼設定モーダル */
+  #settingsModal{
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20000;
   }
+  #settingsModal.open{ display:flex; }
+
+  #settingsBackdrop{
+    position:absolute;
+    inset:0;
+    background: rgba(0,0,0,0.35);
+  }
+
+  #settingsPanel{
+    position: relative;
+    width: min(520px, calc(100% - 32px));
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+    padding: 16px;
+  }
+
+  #settingsPanel h3{
+    margin: 0 0 12px;
+    font-size: 16px;
+  }
+
+  #settingsPanel .row{
+    display:flex;
+    gap:10px;
+    flex-wrap: wrap;
+  }
+
   .ghostBtn{
-    padding:6px 12px;
-    border-radius:10px;
-    border:1px solid #ccc;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.18);
     background:#fff;
     cursor:pointer;
-    font-size:.9em;
+    font-size:.95em;
     display:inline-flex;
     align-items:center;
     justify-content:center;
   }
-
-  /* ▼空状態（中央に表示） */
-#entries{
-  min-height: 42vh; /* タイムラインを“空いてる”感じに */
-}
-
-.emptyState{
-  min-height: 40vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#888;
-  text-align:center;
-  font-size:.95em;
-}
-
-/* ▼備考欄をコンパクトに（3行程度） */
-#notesArea textarea{
-  min-height: 72px;   /* 約3行 */
-  max-height: 120px;
-}
-
-/* ▼備考ドック（下固定：InputBarの上に載せる） */
-#notesDock{
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 70px; /* InputBarの高さぶん上げる（後で微調整OK） */
-  z-index: 9998;
-  background: rgba(250,250,250,0.96);
-  border-top: 1px solid #ddd;
-  padding: 10px 12px;
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  backdrop-filter: blur(6px);
-}
-
-/* 3行くらいのコンパクト備考 */
-#notesDock textarea{
-  flex: 1;
-  min-height: 72px;
-  max-height: 140px;
-  resize: none;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  padding: 8px 10px;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  box-sizing: border-box;
-  outline: none;
-}
-
-/* 備考の保存ボタン */
-#notesDock button{
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: none;
-  background: #333;
-  color: #fff;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* バックアップUIは横幅があるので折り返し */
-#notesDock #backupArea{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  align-items:center;
-}
-
-/* ▼本文が固定UIに隠れないように下余白を増やす */
-body{
-  padding-bottom: 260px; /* InputBar + 備考ドックぶん（後で調整OK） */
-}
-
-#settingsBtn{
-  margin-left:8px;
-  border-radius:8px;
-  border:1px solid #ccc;
-  background:#fff;
-  cursor:pointer;
-}
-
-/* ▼設定モーダル（ポップアップ） */
-#settingsModal{
-  position: fixed;
-  inset: 0;
-  display: none;              /* ←最初は完全に非表示 */
-  align-items: center;
-  justify-content: center;
-  z-index: 20000;
-}
-
-#settingsModal.open{
-  display: flex;
-}
-
-#settingsBackdrop{
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.35);
-}
-
-#settingsPanel{
-  position: relative;
-  width: min(520px, calc(100% - 32px));
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.22);
-  padding: 16px;
-}
-
-#settingsPanel h3{
-  margin: 0 0 12px;
-  font-size: 16px;
-}
-
-#settingsPanel .row{
-  display:flex;
-  gap:10px;
-  flex-wrap: wrap;
-}
-
-#settingsPanel .ghostBtn{
-  padding:10px 12px;
-  border-radius:12px;
-}
-
 </style>
 </head>
 <body>
@@ -354,18 +333,17 @@ body{
   <button id="prev">←</button>
   <button id="today">今日</button>
   <button id="next">→</button>
-  <button id="settingsBtn">⚙︎</button>
 
-  <div id="viewToggle">
-    <button id="weekBtn" class="active">週</button>
-    <button id="monthBtn">月</button>
+  <div id="navRight">
+    <div id="viewToggle">
+      <button id="weekBtn" class="active">週</button>
+      <button id="monthBtn">月</button>
+      <button id="settingsBtn" class="iconOnly" type="button" aria-label="設定" title="設定">⚙︎</button>
+    </div>
   </div>
 </div>
 
-<!-- 月カレンダー -->
 <div id="calendar" class="hidden"></div>
-
-<!-- 週バー -->
 <div id="weekBar"></div>
 
 <h2 id="dateHeader">
@@ -380,28 +358,19 @@ body{
 
 <div id="entries"></div>
 
-<!-- ▼備考パネル（下に固定） -->
+<!-- ▼備考ドック（固定） -->
 <div id="notesDock">
   <textarea id="notesInput" placeholder="この日の備考・感想など（時間軸関係なし）"></textarea>
   <button id="saveNotes" type="button">保存</button>
-
-
+</div>
 
 <div id="ai"></div>
 <div id="endNote" class="end"></div>
 
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
-
   <input id="logTime" type="time"
-  style="
-    width:80px;
-    height:34px;
-    border-radius:10px;
-    border:1px solid #ccc;
-    padding:4px;
-  ">
-
+    style="width:80px;height:34px;border-radius:12px;border:1px solid rgba(0,0,0,0.18);padding:4px;background:#fff;">
   <div id="actionBar">
     <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
     <label class="iconBtn" for="takePhotoInput" title="カメラ" role="button">📷</label>
@@ -415,12 +384,11 @@ body{
   <input id="takePhotoInput" class="fileInput" type="file" accept="image/*" capture="environment">
 </div>
 
+<!-- 設定モーダル -->
 <div id="settingsModal" aria-hidden="true">
   <div id="settingsBackdrop"></div>
-
   <div id="settingsPanel" role="dialog" aria-modal="true" aria-label="設定">
     <h3>設定</h3>
-
     <div class="row">
       <button id="exportLogday" class="ghostBtn" type="button">データを書き出す</button>
 
@@ -435,15 +403,9 @@ body{
 </div>
 
 <script>
-/* =========================
-   state
-========================= */
-let viewMode = 'week'; // 'week' or 'month'
+let viewMode = 'week';
 let currentDate = new Date().toISOString().slice(0,10);
 
-/* =========================
-   helpers
-========================= */
 function renderDateHeader(dateStr){
   const d = new Date(dateStr);
   const dateText = d.toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'});
@@ -451,14 +413,12 @@ function renderDateHeader(dateStr){
   document.getElementById('currentDate').textContent = dateText;
   document.getElementById('currentWeekday').textContent = `（${weekdayText}）`;
 }
-
 function formatYMD(d){ return d.toISOString().slice(0,10); }
 
-// 月曜始まりの週の先頭を返す
 function startOfWeek(dateStr){
   const d = new Date(dateStr);
-  const day = d.getDay(); // 0=日
-  const diff = (day === 0) ? -6 : (1 - day); // 月曜始まり
+  const day = d.getDay();
+  const diff = (day === 0) ? -6 : (1 - day);
   d.setDate(d.getDate() + diff);
   return d;
 }
@@ -479,18 +439,14 @@ function getDayData(dateKey){
   dayData.entries = dayData.entries || [];
   return dayData;
 }
-
 function saveDayData(dateKey, dayData){
   localStorage.setItem(dateKey, JSON.stringify(dayData));
 }
-
 function sortEntries(dayData){
   dayData.entries.sort((a,b) => (a.time || '').localeCompare(b.time || ''));
 }
 
-/* =========================
-   render: week bar
-========================= */
+/* week bar */
 function renderWeekBar(dateStr){
   const bar = document.getElementById('weekBar');
   bar.style.display = (viewMode === 'week') ? 'grid' : 'none';
@@ -515,14 +471,11 @@ function renderWeekBar(dateStr){
       loadDay(currentDate);
       renderWeekBar(currentDate);
     };
-
     bar.appendChild(btn);
   }
 }
 
-/* =========================
-   render: month calendar (月曜始まりに統一)
-========================= */
+/* calendar */
 function generateCalendar(){
   const cal = document.getElementById('calendar');
   cal.innerHTML = '';
@@ -533,8 +486,6 @@ function generateCalendar(){
 
   const firstDay = new Date(year, month, 1);
   const lastDate = new Date(year, month + 1, 0).getDate();
-
-  // 月曜始まりの空白数に変換：月(1)->0, ... 日(0)->6
   const blanks = (firstDay.getDay() + 6) % 7;
 
   for(let i=0;i<blanks;i++){
@@ -557,14 +508,11 @@ function generateCalendar(){
       generateCalendar();
       loadDay(currentDate);
     };
-
     cal.appendChild(btn);
   }
 }
 
-/* =========================
-   render: day / month
-========================= */
+/* render day */
 function loadDay(dateStr){
   renderDateHeader(dateStr);
 
@@ -596,11 +544,10 @@ function loadDay(dateStr){
         img.alt = 'photo';
         div.appendChild(img);
       }
-
       entriesDiv.appendChild(div);
     });
   } else {
-  entriesDiv.innerHTML = '<div class="emptyState">この日はまだ記録がありません</div>';
+    entriesDiv.innerHTML = '<div class="emptyState">この日はまだ記録がありません</div>';
   }
 
   document.getElementById('notesInput').value = saved.notes || '';
@@ -611,9 +558,7 @@ function loadMonth(dateStr){
   loadDay(dateStr);
 }
 
-/* =========================
-   view switch
-========================= */
+/* view switch */
 const weekBtn = document.getElementById('weekBtn');
 const monthBtn = document.getElementById('monthBtn');
 const calEl = document.getElementById('calendar');
@@ -622,47 +567,37 @@ function showWeek(){
   viewMode = 'week';
   weekBtn.classList.add('active');
   monthBtn.classList.remove('active');
-
   calEl.classList.add('hidden');
-
   renderWeekBar(currentDate);
   loadDay(currentDate);
 }
-
 function showMonth(){
   viewMode = 'month';
   monthBtn.classList.add('active');
   weekBtn.classList.remove('active');
-
   calEl.classList.remove('hidden');
-
   generateCalendar();
   loadMonth(currentDate);
 }
 
-// iPhone対策：click + touchend
 ['click','touchend'].forEach(evt => {
   weekBtn.addEventListener(evt, e => { e.preventDefault(); showWeek(); }, {passive:false});
   monthBtn.addEventListener(evt, e => { e.preventDefault(); showMonth(); }, {passive:false});
 });
 
-/* =========================
-   nav arrows
-========================= */
+/* nav arrows */
 document.getElementById('prev').onclick = () => {
   currentDate = shiftByView(currentDate, -1);
   if (viewMode === 'month') generateCalendar();
   (viewMode === 'month') ? loadMonth(currentDate) : loadDay(currentDate);
   renderWeekBar(currentDate);
 };
-
 document.getElementById('next').onclick = () => {
   currentDate = shiftByView(currentDate, 1);
   if (viewMode === 'month') generateCalendar();
   (viewMode === 'month') ? loadMonth(currentDate) : loadDay(currentDate);
   renderWeekBar(currentDate);
 };
-
 document.getElementById('today').onclick = () => {
   currentDate = new Date().toISOString().slice(0,10);
   if (viewMode === 'month') generateCalendar();
@@ -670,9 +605,7 @@ document.getElementById('today').onclick = () => {
   renderWeekBar(currentDate);
 };
 
-/* =========================
-   notes save
-========================= */
+/* notes save */
 document.getElementById('saveNotes').onclick = () => {
   const notes = document.getElementById('notesInput').value;
   const dayData = getDayData(currentDate);
@@ -681,9 +614,7 @@ document.getElementById('saveNotes').onclick = () => {
   alert('保存しました！');
 };
 
-/* =========================
-   bottom bar behavior
-========================= */
+/* bottom bar */
 const inputBar = document.getElementById('inputBar');
 const logInput = document.getElementById('logInput');
 const saveBtn  = document.getElementById('saveBtn');
@@ -691,7 +622,6 @@ const saveBtn  = document.getElementById('saveBtn');
 logInput.addEventListener('focus', () => inputBar.classList.add('expanded'));
 logInput.addEventListener('blur',  () => inputBar.classList.remove('expanded'));
 
-// Enter送信（Shift+Enterで改行）
 logInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -701,7 +631,6 @@ logInput.addEventListener('keydown', (e) => {
 
 saveBtn.addEventListener('click', () => {
   const dateKey = currentDate;
-
   const text = logInput.value.trim();
   if (!text) return;
 
@@ -713,7 +642,6 @@ saveBtn.addEventListener('click', () => {
 
   sortEntries(dayData);
   saveDayData(dateKey, dayData);
-
   loadDay(dateKey);
 
   logInput.value = '';
@@ -721,9 +649,7 @@ saveBtn.addEventListener('click', () => {
   logInput.blur();
 });
 
-/* =========================
-   photo/camera
-========================= */
+/* photo */
 document.getElementById('plusBtn').addEventListener('click', () => {
   alert('＋：将来的に 位置情報 / ファイル / カレンダー を入れる予定');
 });
@@ -750,11 +676,7 @@ async function handlePickedImage(file){
   const photoDataUrl = await fileToDataURL(file);
 
   const dayData = getDayData(dateKey);
-  dayData.entries.push({
-    time,
-    text: '📷 写真',
-    photo: photoDataUrl
-  });
+  dayData.entries.push({ time, text: '📷 写真', photo: photoDataUrl });
 
   sortEntries(dayData);
   saveDayData(dateKey, dayData);
@@ -771,18 +693,13 @@ async function handlePickedImage(file){
   });
 });
 
-/* =========================
-   backup: export / import
-========================= */
+/* backup: export/import */
 document.getElementById("exportLogday").onclick = () => {
   const out = {};
   for (const k of Object.keys(localStorage)) {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
-      out[k] = JSON.parse(localStorage.getItem(k));
-    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) out[k] = JSON.parse(localStorage.getItem(k));
   }
-
-  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(out)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `logday-backup-${new Date().toISOString().slice(0,10)}.json`;
@@ -791,7 +708,6 @@ document.getElementById("exportLogday").onclick = () => {
 
 (() => {
   const input = document.getElementById("importFile");
-
   const handler = async () => {
     const file = input.files && input.files[0];
     if (!file) return;
@@ -802,37 +718,24 @@ document.getElementById("exportLogday").onclick = () => {
 
       const dateKeyRe = /^\d{4}-\d{2}-\d{2}$/;
       const dateKeys = Object.keys(data || {}).filter(k => dateKeyRe.test(k));
+      if (dateKeys.length === 0) { alert("バックアップファイルが違うかも。"); return; }
 
-      if (dateKeys.length === 0) {
-        alert("日付キー（YYYY-MM-DD）が見つからないよ。logDAYのバックアップJSONを選んでね。");
-        return;
-      }
+      if (!confirm(`データを復元するよ（${dateKeys.length}日分）\n同じ日付は上書き。\n実行する？`)) return;
 
-      if (!confirm(`バックアップから ${dateKeys.length}日分を復元するよ。\n同じ日付があれば上書き。\n実行する？`)) {
-        return;
-      }
-
-      for (const k of dateKeys) {
-        localStorage.setItem(k, JSON.stringify(data[k]));
-      }
-
-      alert(`復元完了！（${dateKeys.length}日分）\n画面を更新するね。`);
+      for (const k of dateKeys) localStorage.setItem(k, JSON.stringify(data[k]));
+      alert(`復元完了！（${dateKeys.length}日分）`);
       input.value = "";
       location.reload();
     } catch (err) {
       console.error(err);
-      alert("読み込みに失敗した…JSONが壊れてるか形式が違うかも。");
+      alert("読み込みに失敗した…");
     }
   };
-
   input.addEventListener("change", handler);
   input.addEventListener("input", handler);
 })();
 
-/* =========================
-   init
-========================= */
-
+/* settings modal */
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsModal = document.getElementById('settingsModal');
 const closeSettings = document.getElementById('closeSettings');
@@ -842,7 +745,6 @@ function openSettings(){
   settingsModal.classList.add('open');
   settingsModal.setAttribute('aria-hidden','false');
 }
-
 function closeSettingsModal(){
   settingsModal.classList.remove('open');
   settingsModal.setAttribute('aria-hidden','true');
@@ -852,15 +754,13 @@ settingsBtn.onclick = openSettings;
 closeSettings.onclick = closeSettingsModal;
 settingsBackdrop.onclick = closeSettingsModal;
 
-// ESCで閉じる（PC向け）
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSettingsModal();
 });
 
+/* init */
 generateCalendar();
 showWeek();
-
-
 </script>
 
 </body>
