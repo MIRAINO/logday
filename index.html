@@ -632,11 +632,10 @@ saveNotesBtn.onclick = () => {
   dayData.notes = notes;
   saveDayData(currentDate, dayData);
 
-  alert('保存しました！');
-
-  // ★ここ追加
-  notesDock.classList.remove('expanded');
+  collapseNotesDock();
   notesInput.blur();
+
+  alert('保存しました！');
 };
 
 /* bottom bar */
@@ -654,7 +653,6 @@ function collapseInputBar(){
 }
 
 function collapseNotesDock(){
-  const notesDock = document.getElementById('notesDock');
   notesDock.classList.remove('expanded');
   requestAnimationFrame(() => notesDock.classList.remove('expanded'));
 }
@@ -719,7 +717,7 @@ async function handlePickedImage(file){
   saveDayData(dateKey, dayData);
   loadDay(dateKey);
 
-  inputBar.classList.remove('expanded');
+  collapseInputBar();
   logInput.blur();
 }
 
