@@ -204,26 +204,37 @@
   }
 
   /* ▼下から出る入力バー */
-  #inputBar{
-    position:fixed;
-    left:0;
-    right:0;
-    bottom:0;
-    background:#fff;
-    border-top:1px solid #ddd;
-    padding:10px 12px;
-    display:flex;
-    gap:8px;
-    z-index:9999;
-    align-items:flex-end;
-    transition: padding .25s ease, left .25s ease, right .25s ease, bottom .25s ease, border-radius .25s ease;
-    max-height:220px;
-  }
+#inputBar{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+
+  margin:0;                 /* ★追加：通常状態を明示 */
+  width:auto;               /* ★追加 */
+
+  background:#fff;
+  border-top:1px solid #ddd;
+  padding:10px 12px;
+  display:flex;
+  gap:8px;
+  z-index:9999;
+  align-items:flex-end;
+
+  /* ★margin も transition 対象に入れる */
+  transition: margin .25s ease, padding .25s ease, border-radius .25s ease, box-shadow .25s ease;
+
+  max-height:220px;
+}
 
 #inputBar.expanded{
-  margin: 0 10px 10px;      /* ★左右が確実に縮む */
+  margin: 0 10px 10px;      /* ★左右が縮む */
   border-radius:16px;
+
+  /* ★border-top を消して、枠線を全体に */
+  border-top:none;
   border:1px solid rgba(0,0,0,0.10);
+
   box-shadow:0 -8px 20px rgba(0,0,0,0.12);
   padding:12px;
 }
