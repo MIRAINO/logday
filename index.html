@@ -356,11 +356,12 @@
 
 #logTime{
   position:absolute;
-  left:-10000px;
-  top:-10000px;
-  width:1px;
-  height:1px;
-  opacity:0;
+  bottom:10px;        /* inputBarの高さに合わせる */
+  left:12px;          /* 時計ボタンの位置 */
+  width:36px;
+  height:34px;
+  opacity:0;          /* 見えない */
+  z-index:10001;
 }
 
 /* iPhoneの“タップが怪しい”対策：1タップを安定させる */
