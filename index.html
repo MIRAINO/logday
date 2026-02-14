@@ -559,28 +559,38 @@ logInput.addEventListener('focus', () => inputBar.classList.add('expanded'));
 logInput.addEventListener('blur',  () => inputBar.classList.remove('expanded'));
 
 saveBtn.addEventListener('click', () => {
-  const text = logInput.value.trim();
-  if(!text) return;
++  const dateKey = currentDate; // 保存先をこの瞬間の選択日に固定
+   const text = logInput.value.trim();
+   if(!text) return;
 
-  const timeInput = document.getElementById('logTime');
-  const time = timeInput.value || new Date().toTimeString().slice(0,5);
+   const timeInput = document.getElementById('logTime');
+   const time = timeInput.value || new Date().toTimeString().slice(0,5);
 
-  const dayData = JSON.parse(localStorage.getItem(currentDate) || '{}');
-  dayData.entries = dayData.entries || [];
+-  const dayData = JSON.parse(localStorage.getItem(currentDate) || '{}');
++  const dayData = JSON.parse(localStorage.getItem(dateKey) || '{}');
+   dayData.entries = dayData.entries || [];
 
-  dayData.entries.push({ time, text });
+   dayData.entries.push({ time, text });
 
-  // 時間順に並び替え（←超重要）
-  dayData.entries.sort((a,b) => a.time.localeCompare(b.time));
+   dayData.entries.sort((a,b) => a.time.localeCompare(b.time));
 
-  localStorage.setItem(currentDate, JSON.stringify(dayData));
+-  localStorage.setItem(currentDate, JSON.stringify(dayData));
++  localStorage.setItem(dateKey, JSON.stringify(dayData));
 
-  loadDay(currentDate);
+-  loadDay(currentDate);
++  loadDay(dateKey);
 
-  logInput.value = '';
-  timeInput.value = '';
-  inputBar.classList.remove('expanded');
-  logInput.blur();
+   logInput.value = '';
+   // timeInput.value = ''; ←消さない方が気持ちいい
+   inputBar.classList.remove('expanded');
+   logInput.blur();
+});
+
+logInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    saveBtn.click(); // 既存の保存処理を流用
+  }
 });
 
 /* =========================
