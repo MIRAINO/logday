@@ -225,18 +225,30 @@
   transition: margin .25s ease, padding .25s ease, border-radius .25s ease, box-shadow .25s ease;
 
   max-height:220px;
+
+  /* 追加：通常でも境界がわかるように */
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
 }
 
 #inputBar.expanded{
-  margin: 0 10px 10px;      /* ★左右が縮む */
+  margin: 0 16px 12px;
   border-radius:16px;
 
-  /* ★border-top を消して、枠線を全体に */
   border-top:none;
   border:1px solid rgba(0,0,0,0.10);
 
-  box-shadow:0 -8px 20px rgba(0,0,0,0.12);
   padding:12px;
+
+  /* 影は1回だけ */
+  box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
+
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.98);
+  backdrop-filter: blur(10px);
+}
+
+#inputBar.expanded #logInput{
+  height:120px;
 }
 
   #actionBar{
@@ -277,7 +289,7 @@
     line-height:1.4;
   }
 
-  #inputBar.expanded #logInput{ height:120px; }
+  
 
   #saveBtn{
     padding:0 14px;
@@ -859,4 +871,5 @@ showWeek();
 </script>
 
 </body>
+
 </html>
