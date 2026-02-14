@@ -12,7 +12,6 @@
     background:#fafafa;
     padding-bottom:90px; /* 下バーに隠れないように */
   }
-
   h2{margin-bottom:20px;}
 
   #nav{
@@ -33,6 +32,14 @@
   .time{color:#888;width:60px;display:inline-block;vertical-align:top;}
   .text{display:block;margin-left:60px;}
 
+  img.entryPhoto{
+    display:block;
+    margin-top:6px;
+    margin-left:60px;
+    max-width:100%;
+    border-radius:8px;
+  }
+
   #meta{margin-bottom:12px;color:#666;}
   #weather{font-weight:bold;}
   #dayNote{font-size:.9em;margin-top:4px;}
@@ -47,7 +54,6 @@
     gap:4px;
     margin-bottom:16px;
   }
-
   #calendar button{
     padding:6px 0;
     border-radius:6px;
@@ -56,12 +62,7 @@
     cursor:pointer;
     font-size:.85em;
   }
-
-  #calendar button.active{
-    background:#333;
-    color:#fff;
-  }
-
+  #calendar button.active{ background:#333; color:#fff; }
   #calendar.hidden{display:none;}
 
   /* ▼週バー */
@@ -71,7 +72,6 @@
     gap:6px;
     margin:10px 0 16px;
   }
-
   #weekBar button{
     padding:8px 0;
     border-radius:10px;
@@ -81,14 +81,12 @@
     font-size:.85em;
     line-height:1.1;
   }
-
   #weekBar button .d{
     display:block;
     font-size:.75em;
     color:#666;
     margin-top:2px;
   }
-
   #weekBar button.active{background:#333;color:#fff;}
   #weekBar button.active .d{color:#fff;opacity:.85;}
 
@@ -98,7 +96,6 @@
     display:flex;
     gap:4px;
   }
-
   #viewToggle button{
     padding:4px 10px;
     border-radius:999px;
@@ -107,13 +104,7 @@
     cursor:pointer;
     font-size:.85em;
   }
-
   #viewToggle button.active{background:#333;color:#fff;}
-
-  /* ▼入力エリア（旧） */
-  #inputArea{display:flex;gap:8px;margin-bottom:16px;}
-  #inputArea input{padding:6px;border-radius:6px;border:1px solid #ccc;}
-  #inputArea button{padding:6px 10px;border-radius:6px;border:none;background:#333;color:#fff;cursor:pointer;}
 
   /* ▼フリースペース */
   #notesArea{margin-top:20px;}
@@ -132,21 +123,6 @@
     border:none;
     background:#333;
     color:#fff;
-    cursor:pointer;
-  }
-
-  /* ▼写真エリア */
-  #photoArea{margin:12px 0 20px;}
-  #photoPlaceholder{
-    width:100%;
-    height:180px;
-    background:#eaeaea;
-    border-radius:12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:#666;
-    font-size:16px;
     cursor:pointer;
   }
 
@@ -183,7 +159,6 @@
     align-items:center;
     justify-content:center;
   }
-
   .iconBtn:active{transform:translateY(1px);}
 
   #logInput{
@@ -213,7 +188,7 @@
   #inputBar.expanded{padding:12px;box-shadow:0 -8px 20px rgba(0,0,0,0.12);}
   #inputBar.expanded #logInput{height:120px;}
 
-  /* file input はUIを出さず、機能だけ残す（iOSでlabel forで開く） */
+  /* file input はUIを出さず、機能だけ残す */
   .fileInput{
     position:fixed;
     top:-10000px;
@@ -267,14 +242,10 @@
   <span id="currentWeekday"></span>
 </h2>
 
-
-
 <div id="meta">
   <span id="weather"></span>
   <div id="dayNote"></div>
 </div>
-
-
 
 <div id="entries"></div>
 
@@ -285,7 +256,6 @@
   <!-- バックアップ -->
   <div id="backupArea">
     <button id="exportLogday" class="ghostBtn" type="button">全ログをJSONで保存</button>
-
     <label for="importFile" class="ghostBtn" role="button">JSONを読み込んで復元</label>
     <input id="importFile" class="fileInput" type="file" accept="application/json" />
   </div>
@@ -359,6 +329,20 @@ function shiftByView(dateStr, diff){
   return formatYMD(d);
 }
 
+function getDayData(dateKey){
+  const dayData = JSON.parse(localStorage.getItem(dateKey) || '{}');
+  dayData.entries = dayData.entries || [];
+  return dayData;
+}
+
+function saveDayData(dateKey, dayData){
+  localStorage.setItem(dateKey, JSON.stringify(dayData));
+}
+
+function sortEntries(dayData){
+  dayData.entries.sort((a,b) => (a.time || '').localeCompare(b.time || ''));
+}
+
 /* =========================
    render: week bar
 ========================= */
@@ -405,8 +389,7 @@ function generateCalendar(){
   const firstDay = new Date(year, month, 1);
   const lastDate = new Date(year, month + 1, 0).getDate();
 
-  // firstDay.getDay(): 0(日)〜6(土)
-  // 月曜始まりの空白数に変換：月(1)->0, 火(2)->1, ... 日(0)->6
+  // 月曜始まりの空白数に変換：月(1)->0, ... 日(0)->6
   const blanks = (firstDay.getDay() + 6) % 7;
 
   for(let i=0;i<blanks;i++){
@@ -427,7 +410,6 @@ function generateCalendar(){
       currentDate = dayStr;
       renderDateHeader(currentDate);
       generateCalendar();
-      // ★月表示でも、押した日はちゃんと内容を見せる
       loadDay(currentDate);
     };
 
@@ -444,7 +426,7 @@ function loadDay(dateStr){
   const entriesDiv = document.getElementById('entries');
   entriesDiv.innerHTML = '';
 
-  const saved = JSON.parse(localStorage.getItem(dateStr) || '{}');
+  const saved = getDayData(dateStr);
 
   if(saved.entries && saved.entries.length){
     saved.entries.forEach(entry=>{
@@ -461,6 +443,15 @@ function loadDay(dateStr){
 
       div.appendChild(time);
       div.appendChild(text);
+
+      if (entry.photo) {
+        const img = document.createElement('img');
+        img.className = 'entryPhoto';
+        img.src = entry.photo;
+        img.alt = 'photo';
+        div.appendChild(img);
+      }
+
       entriesDiv.appendChild(div);
     });
   } else {
@@ -472,7 +463,6 @@ function loadDay(dateStr){
 
 function loadMonth(dateStr){
   renderDateHeader(dateStr);
-  // 月モードでも下は選択日の内容を見せるので、ここは最小表示でOK
   loadDay(dateStr);
 }
 
@@ -505,7 +495,7 @@ function showMonth(){
   loadMonth(currentDate);
 }
 
-// iPhone対策：click + touchend（touchstartは二重発火しがち）
+// iPhone対策：click + touchend
 ['click','touchend'].forEach(evt => {
   weekBtn.addEventListener(evt, e => { e.preventDefault(); showWeek(); }, {passive:false});
   monthBtn.addEventListener(evt, e => { e.preventDefault(); showMonth(); }, {passive:false});
@@ -535,16 +525,14 @@ document.getElementById('today').onclick = () => {
   renderWeekBar(currentDate);
 };
 
-
-
 /* =========================
    notes save
 ========================= */
 document.getElementById('saveNotes').onclick = () => {
   const notes = document.getElementById('notesInput').value;
-  const dayData = JSON.parse(localStorage.getItem(currentDate) || '{}');
+  const dayData = getDayData(currentDate);
   dayData.notes = notes;
-  localStorage.setItem(currentDate, JSON.stringify(dayData));
+  saveDayData(currentDate, dayData);
   alert('保存しました！');
 };
 
@@ -558,43 +546,38 @@ const saveBtn  = document.getElementById('saveBtn');
 logInput.addEventListener('focus', () => inputBar.classList.add('expanded'));
 logInput.addEventListener('blur',  () => inputBar.classList.remove('expanded'));
 
-saveBtn.addEventListener('click', () => {
-+  const dateKey = currentDate; // 保存先をこの瞬間の選択日に固定
-   const text = logInput.value.trim();
-   if(!text) return;
-
-   const timeInput = document.getElementById('logTime');
-   const time = timeInput.value || new Date().toTimeString().slice(0,5);
-
--  const dayData = JSON.parse(localStorage.getItem(currentDate) || '{}');
-+  const dayData = JSON.parse(localStorage.getItem(dateKey) || '{}');
-   dayData.entries = dayData.entries || [];
-
-   dayData.entries.push({ time, text });
-
-   dayData.entries.sort((a,b) => a.time.localeCompare(b.time));
-
--  localStorage.setItem(currentDate, JSON.stringify(dayData));
-+  localStorage.setItem(dateKey, JSON.stringify(dayData));
-
--  loadDay(currentDate);
-+  loadDay(dateKey);
-
-   logInput.value = '';
-   // timeInput.value = ''; ←消さない方が気持ちいい
-   inputBar.classList.remove('expanded');
-   logInput.blur();
-});
-
+// Enter送信（Shift+Enterで改行）
 logInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    saveBtn.click(); // 既存の保存処理を流用
+    saveBtn.click();
   }
 });
 
+saveBtn.addEventListener('click', () => {
+  const dateKey = currentDate;
+
+  const text = logInput.value.trim();
+  if (!text) return;
+
+  const timeInput = document.getElementById('logTime');
+  const time = timeInput.value || new Date().toTimeString().slice(0,5);
+
+  const dayData = getDayData(dateKey);
+  dayData.entries.push({ time, text });
+
+  sortEntries(dayData);
+  saveDayData(dateKey, dayData);
+
+  loadDay(dateKey);
+
+  logInput.value = '';
+  inputBar.classList.remove('expanded');
+  logInput.blur();
+});
+
 /* =========================
-   plus + photo/camera
+   photo/camera
 ========================= */
 document.getElementById('plusBtn').addEventListener('click', () => {
   alert('＋：将来的に 位置情報 / ファイル / カレンダー を入れる予定');
@@ -603,8 +586,38 @@ document.getElementById('plusBtn').addEventListener('click', () => {
 const pickPhotoInput = document.getElementById('pickPhotoInput');
 const takePhotoInput = document.getElementById('takePhotoInput');
 
+function fileToDataURL(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
+async function handlePickedImage(file){
+  if(!file) return;
 
+  const dateKey = currentDate;
+  const timeInput = document.getElementById('logTime');
+  const time = timeInput.value || new Date().toTimeString().slice(0,5);
+
+  const photoDataUrl = await fileToDataURL(file);
+
+  const dayData = getDayData(dateKey);
+  dayData.entries.push({
+    time,
+    text: '📷 写真',
+    photo: photoDataUrl
+  });
+
+  sortEntries(dayData);
+  saveDayData(dateKey, dayData);
+  loadDay(dateKey);
+
+  inputBar.classList.remove('expanded');
+  logInput.blur();
+}
 
 [pickPhotoInput, takePhotoInput].forEach(inp => {
   inp.addEventListener('change', (e) => {
@@ -633,6 +646,7 @@ document.getElementById("exportLogday").onclick = () => {
 
 (() => {
   const input = document.getElementById("importFile");
+
   const handler = async () => {
     const file = input.files && input.files[0];
     if (!file) return;
