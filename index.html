@@ -14,16 +14,27 @@
   }
 
   /* =======================
-     Top (sticky)
+     Top (sticky)  ※下のBOXと同じ系統に
   ======================= */
   #topSticky{
     position: sticky;
     top: 0;
     z-index: 16000;
-    background: rgba(250,250,250,0.92);
-    backdrop-filter: blur(10px);
-    padding-top: 10px;
-    margin: -10px 0 10px;
+
+    /* 端まで */
+    margin: -20px -20px 12px;  /* body padding(20px)を打ち消して端へ */
+    padding-top: env(safe-area-inset-top, 0px);
+
+    background:#fff;
+    border-bottom:1px solid #ddd;
+
+    /* 下BOXと同系統の影（向きだけ逆） */
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+
+  /* 上BOXの中身にだけ余白 */
+  #topInner{
+    padding: 10px 12px 12px; /* inputBarのpaddingに寄せた */
   }
 
   #nav{
@@ -97,7 +108,7 @@
     display:grid;
     grid-template-columns:repeat(7,1fr);
     gap:6px;
-    margin:10px 0 14px;
+    margin:10px 0 0; /* topInnerの下paddingに任せて詰める */
   }
   #weekBar button{
     padding:8px 0;
@@ -204,7 +215,6 @@
   }
   .iconBtn:active{transform:translateY(1px);}
 
-  /* 時計アイコンなし：時間表示（ここタップで time picker） */
   #timeHintWrap{
     position:relative;
     height:34px;
@@ -234,7 +244,6 @@
     background:transparent;
   }
 
-  /* time picker を開いた時だけ出す「指定しない」 */
   #noTimeBtn{
     height:34px;
     padding:0 10px;
@@ -414,20 +423,21 @@
 <body>
 
 <div id="topSticky">
-  <div id="nav">
-    <div id="navDate"></div>
+  <div id="topInner">
+    <div id="nav">
+      <div id="navDate"></div>
 
-    <div id="navRight">
-      <button id="toggleBtn" class="iconOnly" type="button" title="表示切替">月</button>
-      <button id="settingsBtn" class="iconOnly" type="button" aria-label="設定" title="設定">⚙︎</button>
+      <div id="navRight">
+        <button id="toggleBtn" class="iconOnly" type="button" title="表示切替">月</button>
+        <button id="settingsBtn" class="iconOnly" type="button" aria-label="設定" title="設定">⚙︎</button>
+      </div>
     </div>
-  </div>
 
-  <div id="calendar" class="hidden"></div>
-  <div id="weekBar"></div>
+    <div id="calendar" class="hidden"></div>
+    <div id="weekBar"></div>
+  </div>
 </div>
 
-<!-- 下の日付は消す（dateHeader自体を廃止） -->
 <div id="meta">
   <span id="weather"></span>
   <div id="dayNote"></div>
@@ -435,7 +445,6 @@
 
 <div id="entries"></div>
 
-<!-- ▼下から出る入力バー -->
 <div id="inputBar">
   <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
 
@@ -456,7 +465,6 @@
   <input id="takePhotoInput" type="file" class="fileInput" accept="image/*" capture="environment">
 </div>
 
-<!-- ＋メニュー -->
 <div id="plusSheet" aria-hidden="true">
   <div id="plusSheetBackdrop"></div>
   <div id="plusSheetPanel" role="dialog" aria-modal="true" aria-label="追加">
@@ -467,7 +475,6 @@
   </div>
 </div>
 
-<!-- 設定モーダル -->
 <div id="settingsModal" aria-hidden="true">
   <div id="settingsBackdrop"></div>
   <div id="settingsPanel" role="dialog" aria-modal="true" aria-label="設定">
@@ -488,15 +495,9 @@
 <div id="toast">保存しました</div>
 
 <script>
-/* =======================
-   DOM helper
-======================= */
 function byId(id){ return document.getElementById(id); }
 
-/* =======================
-   State / Utils
-======================= */
-let viewMode = 'week'; // 'week' | 'month'
+let viewMode = 'week';
 let currentDate = new Date().toISOString().slice(0,10);
 
 function pad2(n){ return String(n).padStart(2,'0'); }
@@ -529,8 +530,6 @@ function getDayData(dateKey){
 function saveDayData(dateKey, dayData){
   localStorage.setItem(dateKey, JSON.stringify(dayData));
 }
-
-/* ★時間なしは一番下に並ぶ */
 function sortEntries(dayData){
   dayData.entries.sort((a,b) => {
     const ta = (a.time && a.time.trim()) ? a.time : '99:99';
@@ -546,9 +545,7 @@ function showToast(message){
   setTimeout(() => toast.classList.remove('show'), 1200);
 }
 
-/* =======================
-   Week bar / Calendar
-======================= */
+/* week bar / calendar */
 function renderWeekBar(dateStr){
   const bar = byId('weekBar');
   bar.style.display = (viewMode === 'week') ? 'grid' : 'none';
@@ -614,9 +611,7 @@ function generateCalendar(){
   }
 }
 
-/* =======================
-   Render Day
-======================= */
+/* render day */
 function loadDay(dateStr){
   renderNavDate(dateStr);
 
@@ -663,9 +658,7 @@ function loadDay(dateStr){
   }
 }
 
-/* =======================
-   View Switch
-======================= */
+/* view switch */
 const toggleBtn = byId('toggleBtn');
 const calEl = byId('calendar');
 const weekBarEl = byId('weekBar');
@@ -674,7 +667,6 @@ function updateToggleLabel(){
   toggleBtn.textContent = (viewMode === 'week') ? '月' : '週';
   toggleBtn.title = (viewMode === 'week') ? '月表示へ' : '週表示へ';
 }
-
 function showWeek(){
   viewMode = 'week';
   calEl.classList.add('hidden');
@@ -683,7 +675,6 @@ function showWeek(){
   loadDay(currentDate);
   updateToggleLabel();
 }
-
 function showMonth(){
   viewMode = 'month';
   calEl.classList.remove('hidden');
@@ -692,15 +683,9 @@ function showMonth(){
   loadDay(currentDate);
   updateToggleLabel();
 }
+toggleBtn.onclick = () => (viewMode === 'week') ? showMonth() : showWeek();
 
-toggleBtn.onclick = () => {
-  if (viewMode === 'week') showMonth();
-  else showWeek();
-};
-
-/* =======================
-   Input Bar
-======================= */
+/* input bar */
 const inputBar = byId('inputBar');
 const plusBtn  = byId('plusBtn');
 const logInput = byId('logInput');
@@ -800,7 +785,7 @@ logInput.addEventListener('keydown', (e) => {
   }
 });
 
-/* ＋シート */
+/* plus sheet */
 function openPlusSheet(){
   plusSheet.classList.add('open');
   plusSheet.setAttribute('aria-hidden','false');
@@ -817,7 +802,7 @@ actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
 actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
 
-/* 添付 */
+/* attachments */
 let pendingDataUrl = null;
 let pendingMime = '';
 let pendingName = '';
@@ -863,7 +848,7 @@ async function handleAttachment(file){
   });
 });
 
-/* 保存 */
+/* save */
 saveBtn.onclick = () => {
   const text = logInput.value.trim();
 
@@ -907,9 +892,7 @@ saveBtn.onclick = () => {
   showToast('保存しました');
 };
 
-/* =======================
-   Settings Modal
-======================= */
+/* settings modal */
 const settingsBtn = byId('settingsBtn');
 const settingsModal = byId('settingsModal');
 const closeSettings = byId('closeSettings');
@@ -972,9 +955,7 @@ byId('exportLogday').onclick = () => {
   input.addEventListener("input", handler);
 })();
 
-/* =======================
-   Init
-======================= */
+/* init */
 generateCalendar();
 showWeek();
 refreshTimeHint();
