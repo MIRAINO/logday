@@ -301,12 +301,7 @@
     opacity:0;
   }
 
-  /* expanded中：左のボタン群を消して入力欄を主役に */
-  #inputBar.expanded #actionBar,
-  #inputBar.expanded #timeBtn,
-  #inputBar.expanded #logTime{
-    display:none !important;
-  }
+  
 
   #inputBar.expanded #logInput{
     height: 120px;
@@ -437,15 +432,16 @@
 
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
-  <label class="iconBtn" id="timeBtn" for="logTime" title="時間" role="button" aria-label="時間">🕒</label>
 
   <div id="actionBar">
-    <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
-    <label class="iconBtn" for="takePhotoInput" title="カメラ" role="button">📷</label>
-    <label class="iconBtn" for="pickPhotoInput" title="写真" role="button">🖼️</label>
+    <label class="iconBtn" id="timeBtn" for="logTime" title="時間">🕒</label>
+    <button class="iconBtn" id="plusBtn" type="button">＋</button>
+    <label class="iconBtn" for="takePhotoInput">📷</label>
+    <label class="iconBtn" for="pickPhotoInput">🖼️</label>
   </div>
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
+
   <button id="saveBtn" type="button">保存</button>
 
   <input id="logTime" type="time">
