@@ -10,7 +10,7 @@
     padding:20px;
     line-height:1.6;
     background:#fafafa;
-    padding-bottom: 260px; /* NotesDock + InputBar のぶん */
+    padding-bottom: 160px; /* NotesDock + InputBar のぶん */
   }
 
   h2{margin-bottom:20px;}
@@ -433,11 +433,7 @@
 
 <div id="entries"></div>
 
-<!-- ▼備考ドック -->
-<div id="notesDock">
-  <textarea id="notesInput" placeholder="この日の備考・感想など（時間軸関係なし）"></textarea>
-  <button id="saveNotes" type="button">保存</button>
-</div>
+
 
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
@@ -731,6 +727,8 @@ logInput.addEventListener('keydown', (e) => {
     logInput.blur(); // ★キーボードの完了でも確実に閉じる
   }
 });
+
+
 
 saveBtn.addEventListener('click', () => {
   const text = logInput.value.trim();
