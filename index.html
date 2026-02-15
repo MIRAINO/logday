@@ -156,53 +156,6 @@
     font-size:.95em;
   }
 
-  /* ▼備考ドック（下固定：InputBarの上） */
-  #notesDock{
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 70px;
-    z-index: 9998;
-    background: rgba(250,250,250,0.96);
-    border-top: 1px solid #ddd;
-    padding: 10px 12px;
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-    backdrop-filter: blur(6px);
-  }
-
-  #notesDock textarea{
-    flex: 1;
-    min-height: 72px;
-    max-height: 140px;
-    resize: none;
-    border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.18);
-    padding: 8px 10px;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    box-sizing: border-box;
-    outline: none;
-    background:#fff;
-    font-size:16px; /* iPhoneズーム防止 */
-    line-height:1.4;
-  }
-  #notesDock.expanded textarea{
-    min-height: 120px;
-    max-height: 220px;
-  }
-
-  #notesDock button{
-    height: 34px;
-    padding: 0 14px;
-    border-radius: 12px;
-    border: none;
-    background: #111;
-    color: #fff;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
   /* ▼下から出る入力バー */
   #inputBar{
     position:fixed;
@@ -463,7 +416,7 @@
   </div>
 
   <div id="expandedTools">
-    <button class="iconBtn">🕒</button>
+    <button class="iconBtn" id="timeBtnEx">🕒</button>
     <button class="iconBtn" id="fileBtnEx">＋</button>
     <button class="iconBtn" id="cameraBtnEx">📷</button>
     <button class="iconBtn" id="photoBtnEx">🖼️</button>
@@ -475,7 +428,7 @@
   <div id="previewArea"></div>
 
   <input id="logTime" type="time" class="fileInput">
-  <input id="fileInput" type="file" class="fileInput">
+  <input id="fileInput" type="file" class="fileInput" accept="*/*">
   <input id="pickPhotoInput" type="file" accept="image/*" class="fileInput">
   <input id="takePhotoInput" type="file" accept="image/*" capture="environment" class="fileInput">
 
@@ -716,18 +669,220 @@ const inputBar = document.getElementById('inputBar');
 const logInput = document.getElementById('logInput');
 const saveBtn  = document.getElementById('saveBtn');
 
-function collapseInputBar(){
-  inputBar.classList.remove('expanded');
-  requestAnimationFrame(() => inputBar.classList.remove('expanded'));
-}
+const logTimeEl   = document.getElementById('logTime');
+const fileInputEl = document.getElementById('fileInput');
+const cameraEl    = document.getElementById('takePhotoInput');
+const photoEl     = document.getElementById('pickPhotoInput');
+const previewArea = document.getElementById('previewArea');
 
-logInput.addEventListener('focus', () => {
-  inputBar.classList.add('expanded');
+function expandInputBar(){ inputBar.classList.add('expanded'); }
+function collapseInputBar(){ inputBar.classList.remove('expanded'); }
+
+logInput.addEventListener('focus', expandInputBar);
+
+// Enter送信（Shift+Enterで改行）
+logInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    saveBtn.click();
+    logInput.blur();
+  }
 });
 
-function collapseInputBar(){
-  inputBar.classList.remove('expanded');
+// outside tap to close
+document.addEventListener('pointerdown', (e) => {
+  if (document.activeElement !== logInput) return;
+  if (inputBar.contains(e.target)) return;
+  logInput.blur();
+  collapseInputBar();
+});
+
+/* ボタン連動（collapsed/expanded 共通） */
+const bind = (id, fn) => {
+  const el = document.getElementById(id);
+  if (el) el.onclick = fn;
+};
+
+bind('fileBtn',   () => fileInputEl.click());
+bind('fileBtnEx', () => fileInputEl.click());
+
+bind('cameraBtn',   () => cameraEl.click());
+bind('cameraBtnEx', () => cameraEl.click());
+
+bind('photoBtn',   () => photoEl.click());
+bind('photoBtnEx', () => photoEl.click());
+
+bind('timeBtn', () => logTimeEl.click());
+// expanded側の時計ボタンにid付けてないので、必要ならHTMLで id="timeBtnEx" 付けて下を有効化
+bind('timeBtnEx', () => logTimeEl.click());
+
+/* 添付プレビュー */
+let pendingFile = null;
+let pendingMime = null;
+
+function fileToDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
+
+async function handleAttachment(file){
+  if(!file) return;
+
+  pendingMime = file.type || '';
+  pendingFile = await fileToDataURL(file);
+
+  previewArea.innerHTML = '';
+  if(pendingMime.startsWith('image/')){
+    const img = document.createElement('img');
+    img.src = pendingFile;
+    img.alt = 'attachment';
+    previewArea.appendChild(img);
+  } else {
+    previewArea.innerHTML = `<div style="margin-top:8px;color:#666;font-size:14px;">📎 添付：${file.name}</div>`;
+  }
+
+  expandInputBar();
+}
+
+[fileInputEl, cameraEl, photoEl].forEach(inp=>{
+  inp.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    handleAttachment(f);
+    e.target.value = '';
+  });
+});
+
+/* input bar */
+const inputBar = document.getElementById('inputBar');
+const logInput = document.getElementById('logInput');
+const saveBtn  = document.getElementById('saveBtn');
+
+const logTimeEl   = document.getElementById('logTime');
+const fileInputEl = document.getElementById('fileInput');
+const cameraEl    = document.getElementById('takePhotoInput');
+const photoEl     = document.getElementById('pickPhotoInput');
+const previewArea = document.getElementById('previewArea');
+
+function expandInputBar(){ inputBar.classList.add('expanded'); }
+function collapseInputBar(){ inputBar.classList.remove('expanded'); }
+
+logInput.addEventListener('focus', expandInputBar);
+
+// Enter送信（Shift+Enterで改行）
+logInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    saveBtn.click();
+    logInput.blur();
+  }
+});
+
+// outside tap to close
+document.addEventListener('pointerdown', (e) => {
+  if (document.activeElement !== logInput) return;
+  if (inputBar.contains(e.target)) return;
+  logInput.blur();
+  collapseInputBar();
+});
+
+/* ボタン連動（collapsed/expanded 共通） */
+const bind = (id, fn) => {
+  const el = document.getElementById(id);
+  if (el) el.onclick = fn;
+};
+
+bind('fileBtn',   () => fileInputEl.click());
+bind('fileBtnEx', () => fileInputEl.click());
+
+bind('cameraBtn',   () => cameraEl.click());
+bind('cameraBtnEx', () => cameraEl.click());
+
+bind('photoBtn',   () => photoEl.click());
+bind('photoBtnEx', () => photoEl.click());
+
+bind('timeBtn', () => logTimeEl.click());
+// expanded側の時計ボタンにid付けてないので、必要ならHTMLで id="timeBtnEx" 付けて下を有効化
+bind('timeBtnEx', () => logTimeEl.click());
+
+/* 添付プレビュー */
+let pendingFile = null;
+let pendingMime = null;
+
+function fileToDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleAttachment(file){
+  if(!file) return;
+
+  pendingMime = file.type || '';
+  pendingFile = await fileToDataURL(file);
+
+  previewArea.innerHTML = '';
+  if(pendingMime.startsWith('image/')){
+    const img = document.createElement('img');
+    img.src = pendingFile;
+    img.alt = 'attachment';
+    previewArea.appendChild(img);
+  } else {
+    previewArea.innerHTML = `<div style="margin-top:8px;color:#666;font-size:14px;">📎 添付：${file.name}</div>`;
+  }
+
+  expandInputBar();
+}
+
+[fileInputEl, cameraEl, photoEl].forEach(inp=>{
+  inp.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    handleAttachment(f);
+    e.target.value = '';
+  });
+});
+
+/* 保存（テキスト + 添付を1エントリーに） */
+saveBtn.onclick = () => {
+  const text = logInput.value.trim();
+  const time = (logTimeEl.value || new Date().toTimeString().slice(0,5));
+
+  // 何もないなら閉じるだけ
+  if(!text && !pendingFile){
+    collapseInputBar();
+    logInput.blur();
+    return;
+  }
+
+  const dayData = getDayData(currentDate);
+  dayData.entries.push({
+    time,
+    text: text || (pendingMime && pendingMime.startsWith('image/') ? '📷 写真' : '📎 添付'),
+    photo: (pendingMime && pendingMime.startsWith('image/')) ? pendingFile : null,
+    file:  (!pendingMime || pendingMime.startsWith('image/')) ? null : pendingFile,
+    fileMime: (!pendingMime || pendingMime.startsWith('image/')) ? null : pendingMime
+  });
+
+  sortEntries(dayData);
+  saveDayData(currentDate, dayData);
+  loadDay(currentDate);
+
+  // リセット
+  logInput.value = '';
+  previewArea.innerHTML = '';
+  pendingFile = null;
+  pendingMime = null;
+
+  collapseInputBar();
+  logInput.blur();
+  showToast('保存しました');
+};
 
 // Enter送信（Shift+Enterで改行）
 logInput.addEventListener('keydown', (e) => {
@@ -738,79 +893,12 @@ logInput.addEventListener('keydown', (e) => {
   }
 });
 
-
-
-saveBtn.addEventListener('click', () => {
-  const text = logInput.value.trim();
-
-  // 何も書かずに保存 → 閉じるだけ
-  if (!text) { collapseInputBar(); logInput.blur(); return; }
-
-  const timeInput = document.getElementById('logTime');
-  const time = timeInput.value || new Date().toTimeString().slice(0,5);
-
-  const dayData = getDayData(currentDate);
-  dayData.entries.push({ time, text });
-  sortEntries(dayData);
-  saveDayData(currentDate, dayData);
-  loadDay(currentDate);
-
-  logInput.value = '';
-  collapseInputBar();
-  logInput.blur();
-  showToast('保存しました');
-});
-
 /* outside tap to close */
 document.addEventListener('pointerdown', (e) => {
   if (document.activeElement !== logInput) return;
   if (inputBar.contains(e.target)) return;
   logInput.blur();
   collapseInputBar();
-});
-
-/* plus */
-document.getElementById('plusBtn').addEventListener('click', () => {
-  showToast('＋：将来的に拡張予定');
-});
-
-/* photo */
-const pickPhotoInput = document.getElementById('pickPhotoInput');
-const takePhotoInput = document.getElementById('takePhotoInput');
-
-function fileToDataURL(file){
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-async function handlePickedImage(file){
-  if(!file) return;
-
-  const timeInput = document.getElementById('logTime');
-  const time = timeInput.value || new Date().toTimeString().slice(0,5);
-  const photoDataUrl = await fileToDataURL(file);
-
-  const dayData = getDayData(currentDate);
-  dayData.entries.push({ time, text: '📷 写真', photo: photoDataUrl });
-
-  sortEntries(dayData);
-  saveDayData(currentDate, dayData);
-  loadDay(currentDate);
-
-  collapseInputBar();
-  logInput.blur();
-  showToast('写真を追加しました');
-}
-
-[pickPhotoInput, takePhotoInput].forEach(inp => {
-  inp.addEventListener('change', (e) => {
-    handlePickedImage(e.target.files && e.target.files[0]);
-    e.target.value = '';
-  });
 });
 
 /* settings modal */
@@ -877,24 +965,6 @@ document.getElementById("exportLogday").onclick = () => {
   input.addEventListener("change", handler);
   input.addEventListener("input", handler);
 })();
-
-const fileInput  = document.getElementById('fileInput');
-const cameraInput= document.getElementById('takePhotoInput');
-const photoInput = document.getElementById('pickPhotoInput');
-const previewArea= document.getElementById('previewArea');
-
-document.getElementById('fileBtn').onclick =
-document.getElementById('fileBtnEx').onclick = () => fileInput.click();
-
-document.getElementById('cameraBtn').onclick =
-document.getElementById('cameraBtnEx').onclick = () => cameraInput.click();
-
-document.getElementById('photoBtn').onclick =
-document.getElementById('photoBtnEx').onclick = () => photoInput.click();
-
-document.getElementById('timeBtn').onclick = () => {
-  document.getElementById('logTime').click();
-};
 
 const fileInput  = document.getElementById('fileInput');
 const cameraInput= document.getElementById('takePhotoInput');
