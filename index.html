@@ -13,8 +13,6 @@
     padding-bottom: 170px; /* InputBar のぶん */
   }
 
-  h2{margin:14px 0 18px;}
-
   /* =======================
      Top (sticky)
   ======================= */
@@ -32,34 +30,24 @@
     display:flex;
     align-items:center;
     gap:10px;
-    margin-bottom:8px;
+    margin-bottom:10px;
   }
 
-  #navCenter{
-    flex:1;
-    text-align:center;
-    font-size:14px;
-    color:#333;
-    min-width: 140px;
+  /* 左寄せ・少し大きい日付 */
+  #navDate{
+    font-size:18px;
+    font-weight:600;
+    color:#111;
+    letter-spacing:.2px;
     user-select:none;
   }
 
   #navRight{
+    margin-left:auto;
     display:flex;
     align-items:center;
     gap:8px;
   }
-
-  #prev,#today,#next{
-    padding:6px 10px;
-    border-radius:10px;
-    border:1px solid rgba(0,0,0,0.16);
-    background:rgba(255,255,255,0.9);
-    cursor:pointer;
-    line-height:1;
-    -webkit-tap-highlight-color: transparent;
-  }
-  #prev:active,#today:active,#next:active{ transform: translateY(1px); }
 
   /* 右側：トグル & 設定（同サイズ） */
   .iconOnly{
@@ -74,15 +62,8 @@
   }
   .iconOnly:active{ transform: translateY(1px); }
 
-  #toggleBtn{
-    font-size:14px;
-    letter-spacing:.2px;
-  }
-
-  /* ボタンの大きさはそのまま、歯車だけ大きく */
-  #settingsBtn{
-    font-size:18px;
-  }
+  #toggleBtn{ font-size:14px; letter-spacing:.2px; }
+  #settingsBtn{ font-size:18px; } /* ボタン大きさはそのまま、歯車だけ大きく */
 
   #meta{margin-bottom:12px;color:#666;}
   #weather{font-weight:bold;}
@@ -186,7 +167,7 @@
     padding:10px 12px;
 
     display:flex;
-    flex-wrap:wrap; /* プレビューは次行に落とす */
+    flex-wrap:wrap;
     align-items:center;
     gap:8px;
 
@@ -240,12 +221,10 @@
     min-width:62px;
     justify-content:center;
   }
-
   #timeHint.isAuto{ opacity:0.55; }
   #timeHint.isSet{  opacity:0.85; }
   #timeHint.isNone{ opacity:0.25; }
 
-  /* 透明time inputを上に被せる（ここをタップするとクルクル） */
   .timeOverlay{
     position:absolute;
     inset:0;
@@ -264,7 +243,7 @@
     background:rgba(0,0,0,0.02);
     font-size:13px;
     color:#111;
-    display:none;              /* 普段は隠す */
+    display:none;
     flex:0 0 auto;
     -webkit-tap-highlight-color: transparent;
   }
@@ -294,7 +273,6 @@
     line-height: 1.5;
   }
 
-  /* expanded時だけ保存ボタン */
   #saveBtn{
     padding:0 14px;
     height:34px;
@@ -313,7 +291,6 @@
     justify-content:center;
   }
 
-  /* previewは必ず次行100% */
   #previewArea{
     flex:0 0 100%;
     width:100%;
@@ -329,7 +306,6 @@
     font-size:14px;
   }
 
-  /* hidden inputs */
   .fileInput{
     position:fixed;
     top:-10000px; left:-10000px;
@@ -414,7 +390,6 @@
     justify-content:center;
   }
 
-  /* toast */
   #toast{
     position:fixed;
     left:50%;
@@ -440,13 +415,7 @@
 
 <div id="topSticky">
   <div id="nav">
-    <button id="prev">←</button>
-    <button id="today">今日</button>
-    <button id="next">→</button>
-
-    <div id="navCenter">
-      <span id="navDate"></span>
-    </div>
+    <div id="navDate"></div>
 
     <div id="navRight">
       <button id="toggleBtn" class="iconOnly" type="button" title="表示切替">月</button>
@@ -458,11 +427,7 @@
   <div id="weekBar"></div>
 </div>
 
-<h2 id="dateHeader">
-  <span id="currentDate"></span>
-  <span id="currentWeekday"></span>
-</h2>
-
+<!-- 下の日付は消す（dateHeader自体を廃止） -->
 <div id="meta">
   <span id="weather"></span>
   <div id="dayNote"></div>
@@ -474,7 +439,6 @@
 <div id="inputBar">
   <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
 
-  <!-- 時計アイコンなし：時間表示クリックで time picker -->
   <div id="timeHintWrap" title="時間">
     <div id="timeHint" class="isAuto"></div>
     <input id="logTime" type="time" class="timeOverlay">
@@ -487,13 +451,12 @@
 
   <div id="previewArea"></div>
 
-  <!-- hidden inputs -->
   <input id="fileInput" type="file" class="fileInput" accept="*/*">
   <input id="pickPhotoInput" type="file" class="fileInput" accept="image/*">
   <input id="takePhotoInput" type="file" class="fileInput" accept="image/*" capture="environment">
 </div>
 
-<!-- ＋メニュー（自前） -->
+<!-- ＋メニュー -->
 <div id="plusSheet" aria-hidden="true">
   <div id="plusSheetBackdrop"></div>
   <div id="plusSheetPanel" role="dialog" aria-modal="true" aria-label="追加">
@@ -543,14 +506,10 @@ function nowHHMM(){
 }
 function formatYMD(d){ return d.toISOString().slice(0,10); }
 
-function renderDateHeader(dateStr){
+function renderNavDate(dateStr){
   const d = new Date(dateStr);
   const dateText = d.toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'});
   const weekdayText = d.toLocaleDateString('ja-JP',{weekday:'short'});
-  byId('currentDate').textContent = dateText;
-  byId('currentWeekday').textContent = `（${weekdayText}）`;
-
-  // nav中央：今日の日付（表示中の日）
   byId('navDate').textContent = `${dateText}（${weekdayText}）`;
 }
 
@@ -560,17 +519,6 @@ function startOfWeek(dateStr){
   const diff = (day === 0) ? -6 : (1 - day);
   d.setDate(d.getDate() + diff);
   return d;
-}
-
-function shiftByView(dateStr, diff){
-  const d = new Date(dateStr);
-  if (viewMode === 'month'){
-    d.setDate(1);
-    d.setMonth(d.getMonth() + diff);
-  } else {
-    d.setDate(d.getDate() + diff);
-  }
-  return formatYMD(d);
 }
 
 function getDayData(dateKey){
@@ -624,7 +572,7 @@ function renderWeekBar(dateStr){
       currentDate = ymd;
       loadDay(currentDate);
       renderWeekBar(currentDate);
-      generateCalendar(); // 月側のactiveも更新される
+      generateCalendar();
     };
     bar.appendChild(btn);
   }
@@ -670,7 +618,7 @@ function generateCalendar(){
    Render Day
 ======================= */
 function loadDay(dateStr){
-  renderDateHeader(dateStr);
+  renderNavDate(dateStr);
 
   const entriesDiv = byId('entries');
   entriesDiv.innerHTML = '';
@@ -716,7 +664,7 @@ function loadDay(dateStr){
 }
 
 /* =======================
-   View Switch / Nav
+   View Switch
 ======================= */
 const toggleBtn = byId('toggleBtn');
 const calEl = byId('calendar');
@@ -739,7 +687,7 @@ function showWeek(){
 function showMonth(){
   viewMode = 'month';
   calEl.classList.remove('hidden');
-  weekBarEl.style.display = 'none'; // ★月表示では週バー不要
+  weekBarEl.style.display = 'none';
   generateCalendar();
   loadDay(currentDate);
   updateToggleLabel();
@@ -748,25 +696,6 @@ function showMonth(){
 toggleBtn.onclick = () => {
   if (viewMode === 'week') showMonth();
   else showWeek();
-};
-
-byId('prev').onclick = () => {
-  currentDate = shiftByView(currentDate, -1);
-  if (viewMode === 'month') generateCalendar();
-  loadDay(currentDate);
-  renderWeekBar(currentDate);
-};
-byId('next').onclick = () => {
-  currentDate = shiftByView(currentDate, 1);
-  if (viewMode === 'month') generateCalendar();
-  loadDay(currentDate);
-  renderWeekBar(currentDate);
-};
-byId('today').onclick = () => {
-  currentDate = new Date().toISOString().slice(0,10);
-  if (viewMode === 'month') generateCalendar();
-  loadDay(currentDate);
-  renderWeekBar(currentDate);
 };
 
 /* =======================
@@ -786,7 +715,6 @@ const photoEl     = byId('pickPhotoInput');
 const cameraEl    = byId('takePhotoInput');
 const previewArea = byId('previewArea');
 
-/* ＋シート */
 const plusSheet = byId('plusSheet');
 const plusSheetBackdrop = byId('plusSheetBackdrop');
 const actPhoto = byId('actPhoto');
@@ -794,7 +722,6 @@ const actCamera= byId('actCamera');
 const actFile  = byId('actFile');
 const actCancel= byId('actCancel');
 
-/* timeMode: 'auto'（未指定=現在時刻で保存）, 'set'（指定時間）, 'none'（時間なし） */
 let timeMode = 'auto';
 let selectedTime = '';
 let timeTicker = null;
@@ -827,7 +754,6 @@ function startTimeTicker(){
   }, 1000);
 }
 
-/* 「指定しない」ボタン：時間なしモードへ */
 noTimeBtn.onclick = () => {
   timeMode = 'none';
   selectedTime = '';
@@ -838,13 +764,11 @@ noTimeBtn.onclick = () => {
   logInput.focus();
 };
 
-/* iOS「リセットが前回値に戻る」対策：
-   pickerを開く直前に value を必ず “今” にセットしておく */
 logTimeEl.addEventListener('pointerdown', () => {
   if (timeMode === 'none') timeMode = 'auto';
-  logTimeEl.value = nowHHMM();   // ★ここが肝
+  logTimeEl.value = nowHHMM();
   refreshTimeHint();
-  showNoTimeBtn();               // ★ここで出す
+  showNoTimeBtn();
 }, {passive:true});
 
 logTimeEl.addEventListener('change', () => {
@@ -856,14 +780,11 @@ logTimeEl.addEventListener('change', () => {
   logInput.focus();
 });
 
-/* うっかり消えすぎ防止（ピッカー操作中に表示） */
 logTimeEl.addEventListener('focus', showNoTimeBtn);
 logTimeEl.addEventListener('blur', () => setTimeout(hideNoTimeBtn, 140));
 
-/* 入力で展開 */
 logInput.addEventListener('focus', expandInputBar);
 
-/* outside tap to close */
 document.addEventListener('pointerdown', (e) => {
   if (document.activeElement !== logInput) return;
   if (inputBar.contains(e.target)) return;
@@ -871,7 +792,6 @@ document.addEventListener('pointerdown', (e) => {
   collapseInputBar();
 });
 
-/* Enter送信（Shift+Enterで改行） */
 logInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -880,7 +800,7 @@ logInput.addEventListener('keydown', (e) => {
   }
 });
 
-/* ＋シート開閉 */
+/* ＋シート */
 function openPlusSheet(){
   plusSheet.classList.add('open');
   plusSheet.setAttribute('aria-hidden','false');
@@ -893,12 +813,11 @@ plusBtn.onclick = openPlusSheet;
 plusSheetBackdrop.onclick = closePlusSheet;
 actCancel.onclick = closePlusSheet;
 
-/* ＋シートの各アクション */
 actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
 actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
 
-/* 添付プレビュー */
+/* 添付 */
 let pendingDataUrl = null;
 let pendingMime = '';
 let pendingName = '';
@@ -948,7 +867,6 @@ async function handleAttachment(file){
 saveBtn.onclick = () => {
   const text = logInput.value.trim();
 
-  // time決定（未指定:auto→現在時刻 / set→指定 / none→""）
   let time = '';
   if (timeMode === 'set') time = selectedTime;
   else if (timeMode === 'auto') time = nowHHMM();
@@ -972,7 +890,6 @@ saveBtn.onclick = () => {
   saveDayData(currentDate, dayData);
   loadDay(currentDate);
 
-  // reset：投稿後は auto に戻す（表示＝現在時刻、保存も現在時刻）
   logInput.value = '';
   previewArea.innerHTML = '';
   pendingDataUrl = null;
@@ -1013,9 +930,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSettingsModal();
 });
 
-/* =======================
-   Backup: export/import
-======================= */
+/* export/import */
 byId('exportLogday').onclick = () => {
   const out = {};
   for (const k of Object.keys(localStorage)) {
