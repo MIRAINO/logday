@@ -205,6 +205,7 @@
     min-width:62px; /* "00:00"相当 */
     justify-content:center;
   }
+  
   #timeHint.isAuto{ opacity:0.55; }
   #timeHint.isSet{  opacity:0.85; }
   #timeHint.isNone{ opacity:0.25; }
@@ -390,6 +391,23 @@
     border-color:rgba(0,0,0,0.10);
     background:rgba(0,0,0,0.02);
   }
+
+  /* time picker を開いた時だけ出す「指定しない」 */
+#noTimeBtn{
+  height:34px;
+  padding:0 10px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,0.10);
+  background:rgba(0,0,0,0.02);
+  font-size:13px;
+  color:#111;
+  display:none;              /* ★普段は隠す */
+  flex:0 0 auto;
+  -webkit-tap-highlight-color: transparent;
+}
+#noTimeBtn.show{ display:inline-flex; align-items:center; }
+#noTimeBtn:active{ transform: translateY(1px); }
+
 </style>
 </head>
 <body>
@@ -433,6 +451,8 @@
     <input id="logTime" type="time" class="timeOverlay">
   </div>
 
+  <button id="noTimeBtn" type="button" aria-label="時間を指定しない">指定しない</button>
+
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
 
@@ -451,7 +471,6 @@
     <button class="sheetBtn" id="actPhoto">写真ライブラリ</button>
     <button class="sheetBtn" id="actCamera">写真を撮る</button>
     <button class="sheetBtn" id="actFile">ファイルを選択</button>
-    <button class="sheetBtn danger" id="actNoTime">指定しない（時間なし）</button>
     <button class="sheetBtn cancel" id="actCancel">キャンセル</button>
   </div>
 </div>
@@ -722,18 +741,26 @@ const saveBtn  = byId('saveBtn');
 const timeHint  = byId('timeHint');
 const logTimeEl = byId('logTime');
 
+const noTimeBtn = byId('noTimeBtn');
+
+function showNoTimeBtn(){
+  noTimeBtn.classList.add('show');
+}
+function hideNoTimeBtn(){
+  noTimeBtn.classList.remove('show');
+}
+
 const fileInputEl = byId('fileInput');
 const photoEl     = byId('pickPhotoInput');
 const cameraEl    = byId('takePhotoInput');
 const previewArea = byId('previewArea');
 
 /* ＋シート */
-const plusSheet = byId('plusSheet');
-const plusSheetBackdrop = byId('plusSheetBackdrop');
+
 const actPhoto = byId('actPhoto');
 const actCamera= byId('actCamera');
 const actFile  = byId('actFile');
-const actNoTime= byId('actNoTime');
+
 const actCancel= byId('actCancel');
 
 /* timeMode: 'auto'（未指定=現在時刻で保存）, 'set'（指定時間）, 'none'（時間なし） */
@@ -772,14 +799,22 @@ logTimeEl.addEventListener('pointerdown', () => {
   if (timeMode === 'none') timeMode = 'auto';
   logTimeEl.value = nowHHMM();   // ここが肝
   refreshTimeHint();
+  showNoTimeBtn();              // ★追加
 }, {passive:true});
 
 logTimeEl.addEventListener('change', () => {
   selectedTime = logTimeEl.value || '';
   timeMode = selectedTime ? 'set' : 'auto';
   refreshTimeHint();
+  hideNoTimeBtn();              // ★追加
   expandInputBar();
   logInput.focus();
+});
+
+logTimeEl.addEventListener('focus', showNoTimeBtn);
+logTimeEl.addEventListener('blur', () => {
+  // すぐ消すと押せないことがあるので少し待つ
+  setTimeout(hideNoTimeBtn, 120);
 });
 
 /* 入力で展開 */
@@ -820,16 +855,7 @@ actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
 actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
 
-/* 指定しない（時間なし） */
-actNoTime.onclick = () => {
-  closePlusSheet();
-  timeMode = 'none';
-  selectedTime = '';
-  logTimeEl.value = '';     // time inputは空
-  refreshTimeHint();        // 表示はブランク
-  expandInputBar();
-  logInput.focus();
-};
+
 
 /* 添付プレビュー */
 let pendingDataUrl = null;
