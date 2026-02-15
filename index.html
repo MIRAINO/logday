@@ -13,7 +13,20 @@
     padding-bottom: 170px; /* InputBar のぶん */
   }
 
-  h2{margin-bottom:20px;}
+  h2{margin:14px 0 18px;}
+
+  /* =======================
+     Top (sticky)
+  ======================= */
+  #topSticky{
+    position: sticky;
+    top: 0;
+    z-index: 16000;
+    background: rgba(250,250,250,0.92);
+    backdrop-filter: blur(10px);
+    padding-top: 10px;
+    margin: -10px 0 10px;
+  }
 
   #nav{
     display:flex;
@@ -21,7 +34,21 @@
     gap:10px;
     margin-bottom:8px;
   }
-  #navRight{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+
+  #navCenter{
+    flex:1;
+    text-align:center;
+    font-size:14px;
+    color:#333;
+    min-width: 140px;
+    user-select:none;
+  }
+
+  #navRight{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
 
   #prev,#today,#next{
     padding:6px 10px;
@@ -34,6 +61,85 @@
   }
   #prev:active,#today:active,#next:active{ transform: translateY(1px); }
 
+  /* 右側：トグル & 設定（同サイズ） */
+  .iconOnly{
+    width:36px; height:32px; padding:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    border-radius:10px;
+    border:1px solid rgba(0,0,0,0.18);
+    background:rgba(255,255,255,0.85);
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+    line-height:1;
+  }
+  .iconOnly:active{ transform: translateY(1px); }
+
+  #toggleBtn{
+    font-size:14px;
+    letter-spacing:.2px;
+  }
+
+  /* ボタンの大きさはそのまま、歯車だけ大きく */
+  #settingsBtn{
+    font-size:18px;
+  }
+
+  #meta{margin-bottom:12px;color:#666;}
+  #weather{font-weight:bold;}
+  #dayNote{font-size:.9em;margin-top:4px;}
+
+  /* =======================
+     Calendar (month)
+  ======================= */
+  #calendar{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px;
+    margin-bottom:12px;
+  }
+  #calendar button{
+    padding:6px 0;
+    border-radius:8px;
+    border:1px solid rgba(0,0,0,0.16);
+    background:#fff;
+    cursor:pointer;
+    font-size:.85em;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #calendar button.active{ background:#111; color:#fff; border-color:#111; }
+  #calendar.hidden{display:none;}
+
+  /* =======================
+     Week bar (week)
+  ======================= */
+  #weekBar{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+    margin:10px 0 14px;
+  }
+  #weekBar button{
+    padding:8px 0;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.14);
+    background:#fff;
+    cursor:pointer;
+    font-size:.85em;
+    line-height:1.1;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #weekBar button .d{
+    display:block;
+    font-size:.75em;
+    color:#666;
+    margin-top:2px;
+  }
+  #weekBar button.active{background:#111;color:#fff;border-color:#111;}
+  #weekBar button.active .d{color:#fff;opacity:.85;}
+
+  /* =======================
+     Entries
+  ======================= */
   .entry{
     background:#fff;
     padding:10px 12px;
@@ -58,79 +164,6 @@
     font-size:14px;
   }
 
-  #meta{margin-bottom:12px;color:#666;}
-  #weather{font-weight:bold;}
-  #dayNote{font-size:.9em;margin-top:4px;}
-
-  /* ▼カレンダー（月） */
-  #calendar{
-    display:grid;
-    grid-template-columns:repeat(7,1fr);
-    gap:4px;
-    margin-bottom:16px;
-  }
-  #calendar button{
-    padding:6px 0;
-    border-radius:8px;
-    border:1px solid rgba(0,0,0,0.16);
-    background:#fff;
-    cursor:pointer;
-    font-size:.85em;
-    -webkit-tap-highlight-color: transparent;
-  }
-  #calendar button.active{ background:#111; color:#fff; border-color:#111; }
-  #calendar.hidden{display:none;}
-
-  /* ▼週バー */
-  #weekBar{
-    display:grid;
-    grid-template-columns:repeat(7,1fr);
-    gap:6px;
-    margin:10px 0 16px;
-  }
-  #weekBar button{
-    padding:8px 0;
-    border-radius:12px;
-    border:1px solid rgba(0,0,0,0.14);
-    background:#fff;
-    cursor:pointer;
-    font-size:.85em;
-    line-height:1.1;
-    -webkit-tap-highlight-color: transparent;
-  }
-  #weekBar button .d{
-    display:block;
-    font-size:.75em;
-    color:#666;
-    margin-top:2px;
-  }
-  #weekBar button.active{background:#111;color:#fff;border-color:#111;}
-  #weekBar button.active .d{color:#fff;opacity:.85;}
-
-  /* ▼表示切替（週/月/設定） */
-  #viewToggle{ display:flex; gap:8px; align-items:center; }
-  #viewToggle button{
-    padding:6px 12px;
-    border-radius:999px;
-    border:1px solid rgba(0,0,0,0.18);
-    background:rgba(255,255,255,0.85);
-    cursor:pointer;
-    font-size:.9em;
-    line-height:1;
-    -webkit-tap-highlight-color: transparent;
-    transition: transform .08s ease, background .15s ease, border-color .15s ease;
-    backdrop-filter: blur(6px);
-    letter-spacing: .2px;
-  }
-  #viewToggle button:active{ transform: translateY(1px); }
-  #viewToggle button.active{ background:#111; color:#fff; border-color:#111; }
-  #viewToggle button.iconOnly{
-    width:36px; height:32px; padding:0;
-    display:inline-flex; align-items:center; justify-content:center;
-    border-radius:10px; font-size:15px;
-  }
-
-  /* ▼空状態 */
   #entries{ min-height: 42vh; }
   .emptyState{
     min-height: 40vh;
@@ -142,7 +175,9 @@
     font-size:.95em;
   }
 
-  /* ▼下から出る入力バー */
+  /* =======================
+     Input Bar (bottom)
+  ======================= */
   #inputBar{
     position:fixed;
     left:0; right:0; bottom:0;
@@ -151,7 +186,7 @@
     padding:10px 12px;
 
     display:flex;
-    flex-wrap:wrap;            /* プレビューは次行に落とす */
+    flex-wrap:wrap; /* プレビューは次行に落とす */
     align-items:center;
     gap:8px;
 
@@ -202,10 +237,10 @@
     color:#111;
     flex:0 0 auto;
     user-select:none;
-    min-width:62px; /* "00:00"相当 */
+    min-width:62px;
     justify-content:center;
   }
-  
+
   #timeHint.isAuto{ opacity:0.55; }
   #timeHint.isSet{  opacity:0.85; }
   #timeHint.isNone{ opacity:0.25; }
@@ -220,9 +255,25 @@
     background:transparent;
   }
 
+  /* time picker を開いた時だけ出す「指定しない」 */
+  #noTimeBtn{
+    height:34px;
+    padding:0 10px;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.10);
+    background:rgba(0,0,0,0.02);
+    font-size:13px;
+    color:#111;
+    display:none;              /* 普段は隠す */
+    flex:0 0 auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #noTimeBtn.show{ display:inline-flex; align-items:center; }
+  #noTimeBtn:active{ transform: translateY(1px); }
+
   #logInput{
     flex:1;
-    min-width:0;               /* iOSのはみ出し対策 */
+    min-width:0;
     height:36px;
     resize:none;
     border-radius:12px;
@@ -236,7 +287,6 @@
     line-height:1.4;
     transition: height .25s ease, max-height .25s ease, padding .25s ease;
   }
-
   #inputBar.expanded #logInput{
     height: 120px;
     max-height: 180px;
@@ -287,7 +337,47 @@
     opacity:0;
   }
 
-  /* ▼設定モーダル */
+  /* =======================
+     Plus Sheet
+  ======================= */
+  #plusSheet{
+    position:fixed;
+    inset:0;
+    display:none;
+    z-index:25000;
+  }
+  #plusSheet.open{ display:block; }
+  #plusSheetBackdrop{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.35);
+  }
+  #plusSheetPanel{
+    position:absolute;
+    left:12px;
+    right:12px;
+    bottom:12px;
+    background:#fff;
+    border-radius:16px;
+    padding:10px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.22);
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .sheetBtn{
+    height:44px;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.12);
+    background:#fff;
+    font-size:16px;
+    cursor:pointer;
+  }
+  .sheetBtn.cancel{ background:rgba(0,0,0,0.04); }
+
+  /* =======================
+     Settings Modal
+  ======================= */
   #settingsModal{
     position: fixed;
     inset: 0;
@@ -297,13 +387,11 @@
     z-index: 20000;
   }
   #settingsModal.open{ display:flex; }
-
   #settingsBackdrop{
     position:absolute;
     inset:0;
     background: rgba(0,0,0,0.35);
   }
-
   #settingsPanel{
     position: relative;
     width: min(520px, calc(100% - 32px));
@@ -312,10 +400,8 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.22);
     padding: 16px;
   }
-
   #settingsPanel h3{ margin: 0 0 12px; font-size: 16px; }
   #settingsPanel .row{ display:flex; gap:10px; flex-wrap: wrap; }
-
   .ghostBtn{
     padding:10px 12px;
     border-radius:12px;
@@ -348,86 +434,29 @@
     opacity:1;
     transform:translateX(-50%) translateY(-4px);
   }
-
-  /* ＋メニュー（簡易ボトムシート） */
-  #plusSheet{
-    position:fixed;
-    inset:0;
-    display:none;
-    z-index:25000;
-  }
-  #plusSheet.open{ display:block; }
-
-  #plusSheetBackdrop{
-    position:absolute;
-    inset:0;
-    background:rgba(0,0,0,0.35);
-  }
-
-  #plusSheetPanel{
-    position:absolute;
-    left:12px;
-    right:12px;
-    bottom:12px;
-    background:#fff;
-    border-radius:16px;
-    padding:10px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.22);
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-  }
-
-  .sheetBtn{
-    height:44px;
-    border-radius:12px;
-    border:1px solid rgba(0,0,0,0.12);
-    background:#fff;
-    font-size:16px;
-    cursor:pointer;
-  }
-  .sheetBtn.cancel{ background:rgba(0,0,0,0.04); }
-  .sheetBtn.danger{
-    border-color:rgba(0,0,0,0.10);
-    background:rgba(0,0,0,0.02);
-  }
-
-  /* time picker を開いた時だけ出す「指定しない」 */
-#noTimeBtn{
-  height:34px;
-  padding:0 10px;
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,0.10);
-  background:rgba(0,0,0,0.02);
-  font-size:13px;
-  color:#111;
-  display:none;              /* ★普段は隠す */
-  flex:0 0 auto;
-  -webkit-tap-highlight-color: transparent;
-}
-#noTimeBtn.show{ display:inline-flex; align-items:center; }
-#noTimeBtn:active{ transform: translateY(1px); }
-
 </style>
 </head>
 <body>
 
-<div id="nav">
-  <button id="prev">←</button>
-  <button id="today">今日</button>
-  <button id="next">→</button>
+<div id="topSticky">
+  <div id="nav">
+    <button id="prev">←</button>
+    <button id="today">今日</button>
+    <button id="next">→</button>
 
-  <div id="navRight">
-    <div id="viewToggle">
-      <button id="weekBtn" class="active">週</button>
-      <button id="monthBtn">月</button>
+    <div id="navCenter">
+      <span id="navDate"></span>
+    </div>
+
+    <div id="navRight">
+      <button id="toggleBtn" class="iconOnly" type="button" title="表示切替">月</button>
       <button id="settingsBtn" class="iconOnly" type="button" aria-label="設定" title="設定">⚙︎</button>
     </div>
   </div>
-</div>
 
-<div id="calendar" class="hidden"></div>
-<div id="weekBar"></div>
+  <div id="calendar" class="hidden"></div>
+  <div id="weekBar"></div>
+</div>
 
 <h2 id="dateHeader">
   <span id="currentDate"></span>
@@ -497,14 +526,14 @@
 
 <script>
 /* =======================
-   DOM helper（$は使わない）
+   DOM helper
 ======================= */
 function byId(id){ return document.getElementById(id); }
 
 /* =======================
    State / Utils
 ======================= */
-let viewMode = 'week';
+let viewMode = 'week'; // 'week' | 'month'
 let currentDate = new Date().toISOString().slice(0,10);
 
 function pad2(n){ return String(n).padStart(2,'0'); }
@@ -520,6 +549,9 @@ function renderDateHeader(dateStr){
   const weekdayText = d.toLocaleDateString('ja-JP',{weekday:'short'});
   byId('currentDate').textContent = dateText;
   byId('currentWeekday').textContent = `（${weekdayText}）`;
+
+  // nav中央：今日の日付（表示中の日）
+  byId('navDate').textContent = `${dateText}（${weekdayText}）`;
 }
 
 function startOfWeek(dateStr){
@@ -592,6 +624,7 @@ function renderWeekBar(dateStr){
       currentDate = ymd;
       loadDay(currentDate);
       renderWeekBar(currentDate);
+      generateCalendar(); // 月側のactiveも更新される
     };
     bar.appendChild(btn);
   }
@@ -625,9 +658,9 @@ function generateCalendar(){
 
     btn.onclick = () => {
       currentDate = dayStr;
-      renderDateHeader(currentDate);
-      generateCalendar();
       loadDay(currentDate);
+      generateCalendar();
+      renderWeekBar(currentDate);
     };
     cal.appendChild(btn);
   }
@@ -685,31 +718,37 @@ function loadDay(dateStr){
 /* =======================
    View Switch / Nav
 ======================= */
-const weekBtn  = byId('weekBtn');
-const monthBtn = byId('monthBtn');
-const calEl    = byId('calendar');
+const toggleBtn = byId('toggleBtn');
+const calEl = byId('calendar');
+const weekBarEl = byId('weekBar');
+
+function updateToggleLabel(){
+  toggleBtn.textContent = (viewMode === 'week') ? '月' : '週';
+  toggleBtn.title = (viewMode === 'week') ? '月表示へ' : '週表示へ';
+}
 
 function showWeek(){
   viewMode = 'week';
-  weekBtn.classList.add('active');
-  monthBtn.classList.remove('active');
   calEl.classList.add('hidden');
+  weekBarEl.style.display = 'grid';
   renderWeekBar(currentDate);
   loadDay(currentDate);
-}
-function showMonth(){
-  viewMode = 'month';
-  monthBtn.classList.add('active');
-  weekBtn.classList.remove('active');
-  calEl.classList.remove('hidden');
-  generateCalendar();
-  loadDay(currentDate);
+  updateToggleLabel();
 }
 
-['click','touchend'].forEach(evt => {
-  weekBtn.addEventListener(evt, e => { e.preventDefault(); showWeek(); }, {passive:false});
-  monthBtn.addEventListener(evt, e => { e.preventDefault(); showMonth(); }, {passive:false});
-});
+function showMonth(){
+  viewMode = 'month';
+  calEl.classList.remove('hidden');
+  weekBarEl.style.display = 'none'; // ★月表示では週バー不要
+  generateCalendar();
+  loadDay(currentDate);
+  updateToggleLabel();
+}
+
+toggleBtn.onclick = () => {
+  if (viewMode === 'week') showMonth();
+  else showWeek();
+};
 
 byId('prev').onclick = () => {
   currentDate = shiftByView(currentDate, -1);
@@ -740,15 +779,7 @@ const saveBtn  = byId('saveBtn');
 
 const timeHint  = byId('timeHint');
 const logTimeEl = byId('logTime');
-
 const noTimeBtn = byId('noTimeBtn');
-
-function showNoTimeBtn(){
-  noTimeBtn.classList.add('show');
-}
-function hideNoTimeBtn(){
-  noTimeBtn.classList.remove('show');
-}
 
 const fileInputEl = byId('fileInput');
 const photoEl     = byId('pickPhotoInput');
@@ -756,11 +787,11 @@ const cameraEl    = byId('takePhotoInput');
 const previewArea = byId('previewArea');
 
 /* ＋シート */
-
+const plusSheet = byId('plusSheet');
+const plusSheetBackdrop = byId('plusSheetBackdrop');
 const actPhoto = byId('actPhoto');
 const actCamera= byId('actCamera');
 const actFile  = byId('actFile');
-
 const actCancel= byId('actCancel');
 
 /* timeMode: 'auto'（未指定=現在時刻で保存）, 'set'（指定時間）, 'none'（時間なし） */
@@ -770,6 +801,9 @@ let timeTicker = null;
 
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
+
+function showNoTimeBtn(){ noTimeBtn.classList.add('show'); }
+function hideNoTimeBtn(){ noTimeBtn.classList.remove('show'); }
 
 function refreshTimeHint(){
   if (timeMode === 'none') {
@@ -793,29 +827,38 @@ function startTimeTicker(){
   }, 1000);
 }
 
+/* 「指定しない」ボタン：時間なしモードへ */
+noTimeBtn.onclick = () => {
+  timeMode = 'none';
+  selectedTime = '';
+  logTimeEl.value = '';
+  refreshTimeHint();
+  hideNoTimeBtn();
+  expandInputBar();
+  logInput.focus();
+};
+
 /* iOS「リセットが前回値に戻る」対策：
    pickerを開く直前に value を必ず “今” にセットしておく */
 logTimeEl.addEventListener('pointerdown', () => {
   if (timeMode === 'none') timeMode = 'auto';
-  logTimeEl.value = nowHHMM();   // ここが肝
+  logTimeEl.value = nowHHMM();   // ★ここが肝
   refreshTimeHint();
-  showNoTimeBtn();              // ★追加
+  showNoTimeBtn();               // ★ここで出す
 }, {passive:true});
 
 logTimeEl.addEventListener('change', () => {
   selectedTime = logTimeEl.value || '';
   timeMode = selectedTime ? 'set' : 'auto';
   refreshTimeHint();
-  hideNoTimeBtn();              // ★追加
+  hideNoTimeBtn();
   expandInputBar();
   logInput.focus();
 });
 
+/* うっかり消えすぎ防止（ピッカー操作中に表示） */
 logTimeEl.addEventListener('focus', showNoTimeBtn);
-logTimeEl.addEventListener('blur', () => {
-  // すぐ消すと押せないことがあるので少し待つ
-  setTimeout(hideNoTimeBtn, 120);
-});
+logTimeEl.addEventListener('blur', () => setTimeout(hideNoTimeBtn, 140));
 
 /* 入力で展開 */
 logInput.addEventListener('focus', expandInputBar);
@@ -854,8 +897,6 @@ actCancel.onclick = closePlusSheet;
 actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
 actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
-
-
 
 /* 添付プレビュー */
 let pendingDataUrl = null;
@@ -920,9 +961,8 @@ saveBtn.onclick = () => {
   }
 
   const dayData = getDayData(currentDate);
-
   dayData.entries.push({
-    time, // noneなら "" → sortで一番下
+    time,
     text: text || (pendingMime.startsWith('image/') ? '📷 写真' : `📎 ${pendingName || '添付'}`),
     photo: pendingMime.startsWith('image/') ? pendingDataUrl : null,
     fileName: pendingMime.startsWith('image/') ? null : pendingName
@@ -941,8 +981,9 @@ saveBtn.onclick = () => {
 
   timeMode = 'auto';
   selectedTime = '';
-  logTimeEl.value = '';     // 次回 picker の基準は pointerdown で now に強制
+  logTimeEl.value = '';
   refreshTimeHint();
+  hideNoTimeBtn();
 
   collapseInputBar();
   logInput.blur();
