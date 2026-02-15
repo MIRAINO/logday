@@ -342,6 +342,83 @@
     opacity:1;
     transform:translateX(-50%) translateY(-4px);
   }
+
+  /* timeHint */
+#timeHintWrap{
+  position:relative;
+  height:34px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 10px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,0.10);
+  background:rgba(0,0,0,0.02);
+  font-size:14px;
+  color:#111;
+  flex:0 0 auto;
+  user-select:none;
+  min-width:62px; /* "00:00"分 */
+  justify-content:center;
+}
+#timeHint.isAuto{ opacity:0.55; }
+#timeHint.isSet{ opacity:0.85; }
+#timeHint.isNone{ opacity:0.25; }
+
+/* 透明time inputを上に被せる */
+.timeOverlay{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  z-index:10001;
+  border:none;
+  background:transparent;
+}
+
+/* ＋メニュー（簡易ボトムシート） */
+#plusSheet{
+  position:fixed;
+  inset:0;
+  display:none;
+  z-index:25000;
+}
+#plusSheet.open{ display:block; }
+
+#plusSheetBackdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,0.35);
+}
+
+#plusSheetPanel{
+  position:absolute;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  background:#fff;
+  border-radius:16px;
+  padding:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.22);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.sheetBtn{
+  height:44px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,0.12);
+  background:#fff;
+  font-size:16px;
+  cursor:pointer;
+}
+.sheetBtn.cancel{
+  background:rgba(0,0,0,0.04);
+}
+.sheetBtn.danger{
+  border-color:rgba(0,0,0,0.10);
+  background:rgba(0,0,0,0.02);
+}
+
 </style>
 </head>
 <body>
@@ -377,13 +454,13 @@
 
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
-  <!-- 仕様：左から（＋）（時計）（時間表示）（入力欄） -->
   <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
 
-  <!-- labelで開ける + JSでもclick保険 -->
-  <label class="iconBtn" id="timeBtn" for="logTime" title="時間" role="button">🕒</label>
-
-  <div id="timeHint" class="isAuto">--:--</div>
+  <!-- 時計アイコンなし：ここタップで time picker -->
+  <div id="timeHintWrap" title="時間">
+    <div id="timeHint" class="isAuto"></div>
+    <input id="logTime" type="time" class="timeOverlay">
+  </div>
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
@@ -391,8 +468,21 @@
   <div id="previewArea"></div>
 
   <!-- hidden inputs -->
-  <input id="logTime" type="time" class="fileInput">
   <input id="fileInput" type="file" class="fileInput" accept="*/*">
+  <input id="pickPhotoInput" type="file" class="fileInput" accept="image/*">
+  <input id="takePhotoInput" type="file" class="fileInput" accept="image/*" capture="environment">
+</div>
+
+<!-- ＋メニュー（自前） -->
+<div id="plusSheet" aria-hidden="true">
+  <div id="plusSheetBackdrop"></div>
+  <div id="plusSheetPanel" role="dialog" aria-modal="true" aria-label="追加">
+    <button class="sheetBtn" id="actPhoto">写真ライブラリ</button>
+    <button class="sheetBtn" id="actCamera">写真を撮る</button>
+    <button class="sheetBtn" id="actFile">ファイルを選択</button>
+    <button class="sheetBtn danger" id="actNoTime">指定しない（時間なし）</button>
+    <button class="sheetBtn cancel" id="actCancel">キャンセル</button>
+  </div>
 </div>
 
 <!-- 設定モーダル -->
@@ -644,54 +734,97 @@ $('today').onclick = () => {
 /* =======================
    Input Bar
 ======================= */
+function $(id){ return document.getElementById(id); }
+
+/* ========= sort: 時間なしは一番下 ========= */
+function sortEntries(dayData){
+  dayData.entries.sort((a,b) => {
+    const ta = (a.time && a.time.trim()) ? a.time : '99:99';
+    const tb = (b.time && b.time.trim()) ? b.time : '99:99';
+    return ta.localeCompare(tb);
+  });
+}
+
+/* ========= input bar ========= */
 const inputBar = $('inputBar');
-const plusBtn = $('plusBtn');
-const timeBtn = $('timeBtn');
-const timeHint = $('timeHint');
+const plusBtn  = $('plusBtn');
 const logInput = $('logInput');
 const saveBtn  = $('saveBtn');
 
-const logTimeEl   = $('logTime');
+const timeHint  = $('timeHint');
+const logTimeEl = $('logTime');
+
 const fileInputEl = $('fileInput');
+const photoEl     = $('pickPhotoInput');
+const cameraEl    = $('takePhotoInput');
 const previewArea = $('previewArea');
 
-let timePinned = false;     // true: ユーザー指定あり
+/* ＋シート */
+const plusSheet = $('plusSheet');
+const plusSheetBackdrop = $('plusSheetBackdrop');
+const actPhoto = $('actPhoto');
+const actCamera= $('actCamera');
+const actFile  = $('actFile');
+const actNoTime= $('actNoTime');
+const actCancel= $('actCancel');
+
+/* timeMode: 'auto'（未指定=現在時刻で保存）, 'set'（指定時間）, 'none'（時間なし） */
+let timeMode = 'auto';
+let selectedTime = ''; // timeMode='set'のときだけ使う
 let timeTicker = null;
+
+function nowHHMM(){ return new Date().toTimeString().slice(0,5); }
 
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
 
 function refreshTimeHint(){
-  const has = !!(logTimeEl.value && logTimeEl.value.trim());
-  timePinned = has;
-
-  if (has) {
-    timeHint.textContent = logTimeEl.value;
-    timeHint.classList.remove('isAuto');
-    timeHint.classList.add('isSet');
-  } else {
-    timeHint.textContent = nowHHMM();     // ★未指定は現在時刻を表示
-    timeHint.classList.add('isAuto');
-    timeHint.classList.remove('isSet');
+  if (timeMode === 'none') {
+    timeHint.textContent = '';          // ★ブランク表示
+    timeHint.className = 'isNone';
+    return;
   }
+  if (timeMode === 'set' && selectedTime) {
+    timeHint.textContent = selectedTime;
+    timeHint.className = 'isSet';
+    return;
+  }
+  // auto
+  timeHint.textContent = nowHHMM();     // ★未指定でも表示は現在時刻
+  timeHint.className = 'isAuto';
 }
 
 function startTimeTicker(){
   if (timeTicker) return;
   timeTicker = setInterval(() => {
-    if (!timePinned) refreshTimeHint();
+    if (timeMode === 'auto') refreshTimeHint();
   }, 1000);
 }
 
-function getTimeForSave(){
-  // 指定あり→それ、未指定→保存時の現在時刻
-  return (logTimeEl.value && logTimeEl.value.trim()) ? logTimeEl.value : nowHHMM();
-}
+/* time picker を開く直前：基準値を現在時刻に（iOSのリセット対策） */
+logTimeEl.addEventListener('pointerdown', () => {
+  // none状態から触ったら auto に戻す
+  if (timeMode === 'none') timeMode = 'auto';
+
+  // ピッカーの“基準値”を常に今にしておく
+  logTimeEl.value = nowHHMM();
+  // まだ確定してないので set にはしない
+  refreshTimeHint();
+}, {passive:true});
+
+/* 変更が入ったら set */
+logTimeEl.addEventListener('change', () => {
+  selectedTime = logTimeEl.value || '';
+  timeMode = selectedTime ? 'set' : 'auto';
+  refreshTimeHint();
+  expandInputBar();
+  logInput.focus();
+});
 
 /* フォーカスで展開 */
 logInput.addEventListener('focus', expandInputBar);
 
-/* 外タップで閉じる（1回だけ） */
+/* outside tap to close */
 document.addEventListener('pointerdown', (e) => {
   if (document.activeElement !== logInput) return;
   if (inputBar.contains(e.target)) return;
@@ -699,17 +832,43 @@ document.addEventListener('pointerdown', (e) => {
   collapseInputBar();
 });
 
-/* ＋：iOS統合シート */
-plusBtn.onclick = () => fileInputEl.click();
+/* Enter送信（Shift+Enterで改行） */
+logInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    saveBtn.click();
+    logInput.blur();
+  }
+});
 
-/* 時計：labelが効かない端末対策の保険 */
-timeBtn.addEventListener('click', () => logTimeEl.click());
-timeHint.addEventListener('click', () => logTimeEl.click());
+/* ＋シート開閉 */
+function openPlusSheet(){
+  plusSheet.classList.add('open');
+  plusSheet.setAttribute('aria-hidden','false');
+}
+function closePlusSheet(){
+  plusSheet.classList.remove('open');
+  plusSheet.setAttribute('aria-hidden','true');
+}
+plusBtn.onclick = openPlusSheet;
+plusSheetBackdrop.onclick = closePlusSheet;
+actCancel.onclick = closePlusSheet;
 
-logTimeEl.addEventListener('change', () => {
+/* ＋シートの各アクション */
+actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
+actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
+actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
+
+/* ★指定しない：時間なしモードへ */
+actNoTime.onclick = () => {
+  closePlusSheet();
+  timeMode = 'none';
+  selectedTime = '';
+  logTimeEl.value = '';
   refreshTimeHint();
   expandInputBar();
-});
+  logInput.focus();
+};
 
 /* 添付プレビュー */
 let pendingDataUrl = null;
@@ -749,25 +908,23 @@ async function handleAttachment(file){
   logInput.focus();
 }
 
-fileInputEl.addEventListener('change', (e) => {
-  const f = e.target.files && e.target.files[0];
-  handleAttachment(f);
-  e.target.value = '';
-});
-
-/* Enter送信（Shift+Enterで改行） */
-logInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    saveBtn.click();
-    logInput.blur();
-  }
+[fileInputEl, photoEl, cameraEl].forEach(inp => {
+  inp.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    handleAttachment(f);
+    e.target.value = '';
+  });
 });
 
 /* 保存 */
 saveBtn.onclick = () => {
   const text = logInput.value.trim();
-  const time = getTimeForSave();
+
+  // time決定
+  let time = '';
+  if (timeMode === 'set') time = selectedTime;
+  else if (timeMode === 'auto') time = nowHHMM();
+  else time = ''; // none
 
   if(!text && !pendingDataUrl){
     collapseInputBar();
@@ -778,7 +935,7 @@ saveBtn.onclick = () => {
   const dayData = getDayData(currentDate);
 
   dayData.entries.push({
-    time,
+    time, // ★ noneなら "" で入る → sortで一番下
     text: text || (pendingMime.startsWith('image/') ? '📷 写真' : `📎 ${pendingName || '添付'}`),
     photo: pendingMime.startsWith('image/') ? pendingDataUrl : null,
     fileName: pendingMime.startsWith('image/') ? null : pendingName
@@ -788,14 +945,15 @@ saveBtn.onclick = () => {
   saveDayData(currentDate, dayData);
   loadDay(currentDate);
 
-  // reset
+  // reset（投稿後は auto に戻す：表示＝現在時刻、保存も現在時刻）
   logInput.value = '';
   previewArea.innerHTML = '';
   pendingDataUrl = null;
   pendingMime = '';
   pendingName = '';
 
-  // ★時間は未指定に戻す（表示は現在時刻へ）
+  timeMode = 'auto';
+  selectedTime = '';
   logTimeEl.value = '';
   refreshTimeHint();
 
@@ -803,6 +961,11 @@ saveBtn.onclick = () => {
   logInput.blur();
   showToast('保存しました');
 };
+
+/* init */
+refreshTimeHint();
+startTimeTicker();
+
 
 /* =======================
    Settings Modal
