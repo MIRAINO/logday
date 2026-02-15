@@ -10,7 +10,7 @@
     padding:20px;
     line-height:1.6;
     background:#fafafa;
-    padding-bottom: 160px; /* InputBar のぶん */
+    padding-bottom: 170px; /* InputBar のぶん */
   }
 
   h2{margin-bottom:20px;}
@@ -21,13 +21,7 @@
     gap:10px;
     margin-bottom:8px;
   }
-
-  #navRight{
-    margin-left:auto;
-    display:flex;
-    align-items:center;
-    gap:8px;
-  }
+  #navRight{ margin-left:auto; display:flex; align-items:center; gap:8px; }
 
   #prev,#today,#next{
     padding:6px 10px;
@@ -47,7 +41,6 @@
     box-shadow:0 1px 4px rgba(0,0,0,0.06);
     margin-bottom:12px;
   }
-
   .time{color:#888;width:60px;display:inline-block;vertical-align:top;}
   .text{display:block;margin-left:60px;}
 
@@ -58,7 +51,6 @@
     max-width:100%;
     border-radius:10px;
   }
-
   .fileLine{
     margin-left:60px;
     margin-top:6px;
@@ -116,11 +108,7 @@
   #weekBar button.active .d{color:#fff;opacity:.85;}
 
   /* ▼表示切替（週/月/設定） */
-  #viewToggle{
-    display:flex;
-    gap:8px;
-    align-items:center;
-  }
+  #viewToggle{ display:flex; gap:8px; align-items:center; }
   #viewToggle button{
     padding:6px 12px;
     border-radius:999px;
@@ -135,20 +123,11 @@
     letter-spacing: .2px;
   }
   #viewToggle button:active{ transform: translateY(1px); }
-  #viewToggle button.active{
-    background:#111;
-    color:#fff;
-    border-color:#111;
-  }
+  #viewToggle button.active{ background:#111; color:#fff; border-color:#111; }
   #viewToggle button.iconOnly{
-    width:36px;
-    height:32px;
-    padding:0;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    border-radius:10px;
-    font-size:15px;
+    width:36px; height:32px; padding:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    border-radius:10px; font-size:15px;
   }
 
   /* ▼空状態 */
@@ -166,12 +145,7 @@
   /* ▼下から出る入力バー */
   #inputBar{
     position:fixed;
-    left:0;
-    right:0;
-    bottom:0;
-    margin:0;
-    width:auto;
-
+    left:0; right:0; bottom:0;
     background:#fff;
     border-top:1px solid #ddd;
     padding:10px 12px;
@@ -179,23 +153,16 @@
     gap:8px;
     z-index:9999;
     align-items:flex-end;
-
-    transition: margin .25s ease, padding .25s ease, border-radius .25s ease, box-shadow .25s ease;
-    max-height:260px;
-
     box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+    max-height:280px;
   }
 
   #inputBar.expanded{
     margin: 0 12px 12px;
     border-radius:16px;
-
     border-top:none;
     border:1px solid rgba(0,0,0,0.10);
-
     padding:12px;
-    gap:10px;
-
     box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
     transform: translateY(-2px);
     background: rgba(255,255,255,0.98);
@@ -203,7 +170,7 @@
   }
 
   .iconBtn{
-    width:34px;height:34px;
+    width:34px; height:34px;
     border-radius:12px;
     border:1px solid rgba(0,0,0,0.14);
     background:#fff;
@@ -214,25 +181,26 @@
     align-items:center;
     justify-content:center;
     -webkit-tap-highlight-color: transparent;
+    flex:0 0 auto;
   }
   .iconBtn:active{transform:translateY(1px);}
 
-  #toolBar{
-    display:flex;
-    gap:6px;
+  /* 時計横の時間表示（未指定は薄い00:00） */
+  #timeHint{
+    height:34px;
+    display:inline-flex;
     align-items:center;
+    padding:0 10px;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.10);
+    background:rgba(0,0,0,0.02);
+    font-size:14px;
+    color:#111;
+    flex:0 0 auto;
+    user-select:none;
   }
-
-  #expandedTools{
-    display:none;
-    flex-direction:column;
-    gap:8px;
-    margin-bottom:6px;
-    align-items:flex-start;
-  }
-
-  #inputBar.expanded #toolBar{ display:none; }
-  #inputBar.expanded #expandedTools{ display:flex; }
+  #timeHint.isEmpty{ opacity:0.25; }
+  #timeHint.isSet{ opacity:0.70; }
 
   #logInput{
     flex:1;
@@ -267,9 +235,13 @@
     color:#fff;
     cursor:pointer;
     white-space: nowrap;
+    display:none; /* 通常は出さない */
+    flex:0 0 auto;
   }
+  #inputBar.expanded #saveBtn{ display:inline-flex; align-items:center; justify-content:center; }
 
   /* preview */
+  #previewArea{ width:100%; }
   #previewArea img{
     max-width:100%;
     border-radius:10px;
@@ -284,10 +256,23 @@
   /* hidden inputs */
   .fileInput{
     position:fixed;
-    top:-10000px;
-    left:-10000px;
-    width:1px;height:1px;
+    top:-10000px; left:-10000px;
+    width:1px; height:1px;
     opacity:0;
+  }
+
+  /* iOSで時間pickerを確実に出す：透明inputを時計の上に重ねる */
+  #logTime{
+    position:absolute;
+    left:12px; bottom:10px;
+    width:34px; height:34px;
+    opacity:0;
+    z-index:10001;
+  }
+  #inputBar.expanded #logTime{
+    left:12px;
+    bottom:auto;
+    top:12px;
   }
 
   /* ▼設定モーダル */
@@ -394,31 +379,22 @@
 
 <!-- ▼下から出る入力バー -->
 <div id="inputBar">
-  <!-- collapsed: 横並び -->
-  <div id="toolBar">
-    <button class="iconBtn" id="timeBtn" type="button" title="時間">🕒</button>
-    <button class="iconBtn" id="fileBtn" type="button" title="ファイル">＋</button>
-    <button class="iconBtn" id="cameraBtn" type="button" title="カメラ">📷</button>
-    <button class="iconBtn" id="photoBtn" type="button" title="写真">🖼️</button>
-  </div>
+  <!-- 仕様：左から（＋）（時計）（時間表示）（入力欄） -->
+  <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
 
-  <!-- expanded: 縦並び -->
-  <div id="expandedTools">
-    <button class="iconBtn" id="timeBtnEx" type="button" title="時間">🕒</button>
-    <button class="iconBtn" id="fileBtnEx" type="button" title="ファイル">＋</button>
-    <button class="iconBtn" id="cameraBtnEx" type="button" title="カメラ">📷</button>
-    <button class="iconBtn" id="photoBtnEx" type="button" title="写真">🖼️</button>
-    <button id="saveBtn" type="button">保存</button>
-  </div>
+  <!-- 時計はlabelでもOKだが、iOS安定のため inputを重ねる（CSSでlogTimeを配置） -->
+  <label class="iconBtn" id="timeBtn" for="logTime" title="時間" role="button">🕒</label>
+
+  <div id="timeHint" class="isEmpty">00:00</div>
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
+  <button id="saveBtn" type="button">保存</button>
+
   <div id="previewArea"></div>
 
   <!-- hidden inputs -->
   <input id="logTime" type="time" class="fileInput">
   <input id="fileInput" type="file" class="fileInput" accept="*/*">
-  <input id="pickPhotoInput" type="file" accept="image/*" class="fileInput">
-  <input id="takePhotoInput" type="file" accept="image/*" capture="environment" class="fileInput">
 </div>
 
 <!-- 設定モーダル -->
@@ -661,56 +637,50 @@ document.getElementById('today').onclick = () => {
 
 /* ========= input bar (clean) ========= */
 const inputBar = document.getElementById('inputBar');
+const plusBtn = document.getElementById('plusBtn');
 const logInput = document.getElementById('logInput');
 const saveBtn  = document.getElementById('saveBtn');
 
 const logTimeEl   = document.getElementById('logTime');
-const fileInputEl = document.getElementById('fileInput');        // ＋（書類）
-const photoEl     = document.getElementById('pickPhotoInput');   // 🖼️
-const cameraEl    = document.getElementById('takePhotoInput');   // 📷
+const fileInputEl = document.getElementById('fileInput');
 const previewArea = document.getElementById('previewArea');
+const timeHint    = document.getElementById('timeHint');
 
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
 
+function getSelectedTimeOrDefault(){
+  // 時間が選ばれていればそれを使う
+  if (logTimeEl.value && logTimeEl.value.trim()) return logTimeEl.value;
+
+  // 未設定なら「保存時刻＝現在時刻」
+  return new Date().toTimeString().slice(0,5);
+}
+
+function refreshTimeHint(){
+  const has = !!(logTimeEl.value && logTimeEl.value.trim());
+  timeHint.textContent = has ? logTimeEl.value : '00:00';
+  timeHint.classList.toggle('isEmpty', !has);
+  timeHint.classList.toggle('isSet', has);
+}
+
 logInput.addEventListener('focus', expandInputBar);
-
-// Enter送信（Shift+Enterで改行）
-logInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    saveBtn.click();
-    logInput.blur();
-  }
+logInput.addEventListener('blur', () => {
+  // 何もしてない時に勝手に閉じるのは好みが分かれるので、外タップで閉じる方針に統一
 });
 
-// outside tap to close（1回だけ）
-document.addEventListener('pointerdown', (e) => {
-  if (document.activeElement !== logInput) return;
-  if (inputBar.contains(e.target)) return;
-  logInput.blur();
-  collapseInputBar();
+logTimeEl.addEventListener('change', () => {
+  refreshTimeHint();
+  expandInputBar();
 });
 
-/* ボタン連動（collapsed/expanded 共通） */
-const bind = (id, fn) => {
-  const el = document.getElementById(id);
-  if (el) el.onclick = fn;
-};
+// timeHintをタップしても時間選べるように（時計と同じ動き）
+timeHint.addEventListener('click', () => logTimeEl.click());
 
-bind('fileBtn',   () => fileInputEl.click());
-bind('fileBtnEx', () => fileInputEl.click());
+/* ＋：iOSでは写真/カメラ/ファイルが統合シートで出る */
+plusBtn.onclick = () => fileInputEl.click();
 
-bind('cameraBtn',   () => cameraEl.click());
-bind('cameraBtnEx', () => cameraEl.click());
-
-bind('photoBtn',   () => photoEl.click());
-bind('photoBtnEx', () => photoEl.click());
-
-bind('timeBtn',   () => logTimeEl.click());
-bind('timeBtnEx', () => logTimeEl.click());
-
-/* 添付プレビュー */
+/* 添付プレビュー（画像は表示、書類は名前だけ） */
 let pendingDataUrl = null;
 let pendingMime = '';
 let pendingName = '';
@@ -745,20 +715,36 @@ async function handleAttachment(file){
   }
 
   expandInputBar();
+  logInput.focus();
 }
 
-[fileInputEl, photoEl, cameraEl].forEach(inp => {
-  inp.addEventListener('change', (e) => {
-    const f = e.target.files && e.target.files[0];
-    handleAttachment(f);
-    e.target.value = '';
-  });
+fileInputEl.addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  handleAttachment(f);
+  e.target.value = '';
 });
 
-/* 保存：テキスト＋添付を1エントリーに */
+/* Enter送信（Shift+Enterで改行） */
+logInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    saveBtn.click();
+    logInput.blur();
+  }
+});
+
+/* outside tap to close（1回だけ） */
+document.addEventListener('pointerdown', (e) => {
+  if (document.activeElement !== logInput) return;
+  if (inputBar.contains(e.target)) return;
+  logInput.blur();
+  collapseInputBar();
+});
+
+/* 保存：時間は未指定なら00:00 */
 saveBtn.onclick = () => {
   const text = logInput.value.trim();
-  const time = (logTimeEl.value || new Date().toTimeString().slice(0,5));
+  const time = getSelectedTimeOrDefault();
 
   if(!text && !pendingDataUrl){
     collapseInputBar();
@@ -767,12 +753,11 @@ saveBtn.onclick = () => {
   }
 
   const dayData = getDayData(currentDate);
+
   dayData.entries.push({
     time,
     text: text || (pendingMime.startsWith('image/') ? '📷 写真' : `📎 ${pendingName || '添付'}`),
     photo: pendingMime.startsWith('image/') ? pendingDataUrl : null,
-    file:  pendingMime.startsWith('image/') ? null : pendingDataUrl,
-    fileMime: pendingMime.startsWith('image/') ? null : pendingMime,
     fileName: pendingMime.startsWith('image/') ? null : pendingName
   });
 
@@ -781,11 +766,15 @@ saveBtn.onclick = () => {
   loadDay(currentDate);
 
   // reset
-  logInput.value = '';
-  previewArea.innerHTML = '';
-  pendingDataUrl = null;
-  pendingMime = '';
-  pendingName = '';
+logInput.value = '';
+previewArea.innerHTML = '';
+pendingDataUrl = null;
+pendingMime = '';
+pendingName = '';
+
+// ★ ここを追加
+logTimeEl.value = '';
+refreshTimeHint();
 
   collapseInputBar();
   logInput.blur();
@@ -806,11 +795,9 @@ function closeSettingsModal(){
   settingsModal.classList.remove('open');
   settingsModal.setAttribute('aria-hidden','true');
 }
-
 settingsBtn.onclick = openSettings;
 closeSettings.onclick = closeSettingsModal;
 settingsBackdrop.onclick = closeSettingsModal;
-
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSettingsModal();
 });
@@ -860,6 +847,7 @@ document.getElementById("exportLogday").onclick = () => {
 /* ========= init ========= */
 generateCalendar();
 showWeek();
+refreshTimeHint();
 </script>
 
 </body>
