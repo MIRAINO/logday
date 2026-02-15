@@ -149,12 +149,15 @@
     background:#fff;
     border-top:1px solid #ddd;
     padding:10px 12px;
+
     display:flex;
+    flex-wrap:wrap;            /* ★プレビューは次行に落とす */
+    align-items:center;
     gap:8px;
+
     z-index:9999;
-    align-items:flex-end;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
-    max-height:280px;
+    max-height:320px;
   }
 
   #inputBar.expanded{
@@ -185,7 +188,7 @@
   }
   .iconBtn:active{transform:translateY(1px);}
 
-  /* 時計横の時間表示（未指定は薄い00:00） */
+  /* 時計横の時間表示（未指定は薄い） */
   #timeHint{
     height:34px;
     display:inline-flex;
@@ -199,18 +202,18 @@
     flex:0 0 auto;
     user-select:none;
   }
-  #timeHint.isEmpty{ opacity:0.25; }
-  #timeHint.isSet{ opacity:0.70; }
+  #timeHint.isAuto{ opacity:0.35; } /* 未指定（自動） */
+  #timeHint.isSet{ opacity:0.80; }  /* 指定済 */
 
   #logInput{
     flex:1;
+    min-width:0;               /* ★iOSのはみ出し対策 */
     height:36px;
     resize:none;
     border-radius:12px;
     border:1px solid rgba(0,0,0,0.18);
     padding:8px 10px;
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    width:100%;
     box-sizing:border-box;
     outline:none;
     background:#fff;
@@ -240,8 +243,11 @@
   }
   #inputBar.expanded #saveBtn{ display:inline-flex; align-items:center; justify-content:center; }
 
-  /* preview */
-  #previewArea{ width:100%; }
+  /* previewは必ず次行100% */
+  #previewArea{
+    flex:0 0 100%;
+    width:100%;
+  }
   #previewArea img{
     max-width:100%;
     border-radius:10px;
@@ -261,7 +267,7 @@
     opacity:0;
   }
 
-  /* iOSで時間pickerを確実に出す：透明inputを時計の上に重ねる */
+  /* iOSで時間pickerを確実に：透明inputを時計の上に重ねる */
   #logTime{
     position:absolute;
     left:12px; bottom:10px;
@@ -301,16 +307,8 @@
     padding: 16px;
   }
 
-  #settingsPanel h3{
-    margin: 0 0 12px;
-    font-size: 16px;
-  }
-
-  #settingsPanel .row{
-    display:flex;
-    gap:10px;
-    flex-wrap: wrap;
-  }
+  #settingsPanel h3{ margin: 0 0 12px; font-size: 16px; }
+  #settingsPanel .row{ display:flex; gap:10px; flex-wrap: wrap; }
 
   .ghostBtn{
     padding:10px 12px;
@@ -382,10 +380,10 @@
   <!-- 仕様：左から（＋）（時計）（時間表示）（入力欄） -->
   <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
 
-  <!-- 時計はlabelでもOKだが、iOS安定のため inputを重ねる（CSSでlogTimeを配置） -->
+  <!-- labelで開ける + JSでもclick保険 -->
   <label class="iconBtn" id="timeBtn" for="logTime" title="時間" role="button">🕒</label>
 
-  <div id="timeHint" class="isEmpty">00:00</div>
+  <div id="timeHint" class="isAuto">--:--</div>
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
@@ -418,19 +416,28 @@
 <div id="toast">保存しました</div>
 
 <script>
-/* ========= state ========= */
+/* =======================
+   State / Utils
+======================= */
 let viewMode = 'week';
 let currentDate = new Date().toISOString().slice(0,10);
 
-/* ========= helpers ========= */
+const $ = (id) => document.getElementById(id);
+const pad2 = (n) => String(n).padStart(2,'0');
+const nowHHMM = () => {
+  const d = new Date();
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
+
+function formatYMD(d){ return d.toISOString().slice(0,10); }
+
 function renderDateHeader(dateStr){
   const d = new Date(dateStr);
   const dateText = d.toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'});
   const weekdayText = d.toLocaleDateString('ja-JP',{weekday:'short'});
-  document.getElementById('currentDate').textContent = dateText;
-  document.getElementById('currentWeekday').textContent = `（${weekdayText}）`;
+  $('currentDate').textContent = dateText;
+  $('currentWeekday').textContent = `（${weekdayText}）`;
 }
-function formatYMD(d){ return d.toISOString().slice(0,10); }
 
 function startOfWeek(dateStr){
   const d = new Date(dateStr);
@@ -464,15 +471,17 @@ function sortEntries(dayData){
 }
 
 function showToast(message){
-  const toast = document.getElementById('toast');
+  const toast = $('toast');
   toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 1200);
 }
 
-/* ========= week bar ========= */
+/* =======================
+   Week bar / Calendar
+======================= */
 function renderWeekBar(dateStr){
-  const bar = document.getElementById('weekBar');
+  const bar = $('weekBar');
   bar.style.display = (viewMode === 'week') ? 'grid' : 'none';
   if (viewMode !== 'week') return;
 
@@ -499,9 +508,8 @@ function renderWeekBar(dateStr){
   }
 }
 
-/* ========= calendar ========= */
 function generateCalendar(){
-  const cal = document.getElementById('calendar');
+  const cal = $('calendar');
   cal.innerHTML = '';
 
   const d = new Date(currentDate);
@@ -536,11 +544,13 @@ function generateCalendar(){
   }
 }
 
-/* ========= render day ========= */
+/* =======================
+   Render Day
+======================= */
 function loadDay(dateStr){
   renderDateHeader(dateStr);
 
-  const entriesDiv = document.getElementById('entries');
+  const entriesDiv = $('entries');
   entriesDiv.innerHTML = '';
 
   const saved = getDayData(dateStr);
@@ -583,15 +593,12 @@ function loadDay(dateStr){
   }
 }
 
-function loadMonth(dateStr){
-  renderDateHeader(dateStr);
-  loadDay(dateStr);
-}
-
-/* ========= view switch ========= */
-const weekBtn = document.getElementById('weekBtn');
-const monthBtn = document.getElementById('monthBtn');
-const calEl = document.getElementById('calendar');
+/* =======================
+   View Switch / Nav
+======================= */
+const weekBtn = $('weekBtn');
+const monthBtn = $('monthBtn');
+const calEl = $('calendar');
 
 function showWeek(){
   viewMode = 'week';
@@ -607,7 +614,7 @@ function showMonth(){
   weekBtn.classList.remove('active');
   calEl.classList.remove('hidden');
   generateCalendar();
-  loadMonth(currentDate);
+  loadDay(currentDate);
 }
 
 ['click','touchend'].forEach(evt => {
@@ -615,72 +622,96 @@ function showMonth(){
   monthBtn.addEventListener(evt, e => { e.preventDefault(); showMonth(); }, {passive:false});
 });
 
-/* ========= nav arrows ========= */
-document.getElementById('prev').onclick = () => {
+$('prev').onclick = () => {
   currentDate = shiftByView(currentDate, -1);
   if (viewMode === 'month') generateCalendar();
-  (viewMode === 'month') ? loadMonth(currentDate) : loadDay(currentDate);
+  loadDay(currentDate);
   renderWeekBar(currentDate);
 };
-document.getElementById('next').onclick = () => {
+$('next').onclick = () => {
   currentDate = shiftByView(currentDate, 1);
   if (viewMode === 'month') generateCalendar();
-  (viewMode === 'month') ? loadMonth(currentDate) : loadDay(currentDate);
+  loadDay(currentDate);
   renderWeekBar(currentDate);
 };
-document.getElementById('today').onclick = () => {
+$('today').onclick = () => {
   currentDate = new Date().toISOString().slice(0,10);
   if (viewMode === 'month') generateCalendar();
-  (viewMode === 'month') ? loadMonth(currentDate) : loadDay(currentDate);
+  loadDay(currentDate);
   renderWeekBar(currentDate);
 };
 
-/* ========= input bar (clean) ========= */
-const inputBar = document.getElementById('inputBar');
-const plusBtn = document.getElementById('plusBtn');
-const logInput = document.getElementById('logInput');
-const saveBtn  = document.getElementById('saveBtn');
+/* =======================
+   Input Bar
+======================= */
+const inputBar = $('inputBar');
+const plusBtn = $('plusBtn');
+const timeBtn = $('timeBtn');
+const timeHint = $('timeHint');
+const logInput = $('logInput');
+const saveBtn  = $('saveBtn');
 
-const logTimeEl   = document.getElementById('logTime');
-const fileInputEl = document.getElementById('fileInput');
-const previewArea = document.getElementById('previewArea');
-const timeHint    = document.getElementById('timeHint');
+const logTimeEl   = $('logTime');
+const fileInputEl = $('fileInput');
+const previewArea = $('previewArea');
+
+let timePinned = false;     // true: ユーザー指定あり
+let timeTicker = null;
 
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
 
-function getSelectedTimeOrDefault(){
-  // 時間が選ばれていればそれを使う
-  if (logTimeEl.value && logTimeEl.value.trim()) return logTimeEl.value;
-
-  // 未設定なら「保存時刻＝現在時刻」
-  return new Date().toTimeString().slice(0,5);
-}
-
 function refreshTimeHint(){
   const has = !!(logTimeEl.value && logTimeEl.value.trim());
-  timeHint.textContent = has ? logTimeEl.value : '00:00';
-  timeHint.classList.toggle('isEmpty', !has);
-  timeHint.classList.toggle('isSet', has);
+  timePinned = has;
+
+  if (has) {
+    timeHint.textContent = logTimeEl.value;
+    timeHint.classList.remove('isAuto');
+    timeHint.classList.add('isSet');
+  } else {
+    timeHint.textContent = nowHHMM();     // ★未指定は現在時刻を表示
+    timeHint.classList.add('isAuto');
+    timeHint.classList.remove('isSet');
+  }
 }
 
+function startTimeTicker(){
+  if (timeTicker) return;
+  timeTicker = setInterval(() => {
+    if (!timePinned) refreshTimeHint();
+  }, 1000);
+}
+
+function getTimeForSave(){
+  // 指定あり→それ、未指定→保存時の現在時刻
+  return (logTimeEl.value && logTimeEl.value.trim()) ? logTimeEl.value : nowHHMM();
+}
+
+/* フォーカスで展開 */
 logInput.addEventListener('focus', expandInputBar);
-logInput.addEventListener('blur', () => {
-  // 何もしてない時に勝手に閉じるのは好みが分かれるので、外タップで閉じる方針に統一
+
+/* 外タップで閉じる（1回だけ） */
+document.addEventListener('pointerdown', (e) => {
+  if (document.activeElement !== logInput) return;
+  if (inputBar.contains(e.target)) return;
+  logInput.blur();
+  collapseInputBar();
 });
+
+/* ＋：iOS統合シート */
+plusBtn.onclick = () => fileInputEl.click();
+
+/* 時計：labelが効かない端末対策の保険 */
+timeBtn.addEventListener('click', () => logTimeEl.click());
+timeHint.addEventListener('click', () => logTimeEl.click());
 
 logTimeEl.addEventListener('change', () => {
   refreshTimeHint();
   expandInputBar();
 });
 
-// timeHintをタップしても時間選べるように（時計と同じ動き）
-timeHint.addEventListener('click', () => logTimeEl.click());
-
-/* ＋：iOSでは写真/カメラ/ファイルが統合シートで出る */
-plusBtn.onclick = () => fileInputEl.click();
-
-/* 添付プレビュー（画像は表示、書類は名前だけ） */
+/* 添付プレビュー */
 let pendingDataUrl = null;
 let pendingMime = '';
 let pendingName = '';
@@ -733,18 +764,10 @@ logInput.addEventListener('keydown', (e) => {
   }
 });
 
-/* outside tap to close（1回だけ） */
-document.addEventListener('pointerdown', (e) => {
-  if (document.activeElement !== logInput) return;
-  if (inputBar.contains(e.target)) return;
-  logInput.blur();
-  collapseInputBar();
-});
-
-/* 保存：時間は未指定なら00:00 */
+/* 保存 */
 saveBtn.onclick = () => {
   const text = logInput.value.trim();
-  const time = getSelectedTimeOrDefault();
+  const time = getTimeForSave();
 
   if(!text && !pendingDataUrl){
     collapseInputBar();
@@ -766,26 +789,28 @@ saveBtn.onclick = () => {
   loadDay(currentDate);
 
   // reset
-logInput.value = '';
-previewArea.innerHTML = '';
-pendingDataUrl = null;
-pendingMime = '';
-pendingName = '';
+  logInput.value = '';
+  previewArea.innerHTML = '';
+  pendingDataUrl = null;
+  pendingMime = '';
+  pendingName = '';
 
-// ★ ここを追加
-logTimeEl.value = '';
-refreshTimeHint();
+  // ★時間は未指定に戻す（表示は現在時刻へ）
+  logTimeEl.value = '';
+  refreshTimeHint();
 
   collapseInputBar();
   logInput.blur();
   showToast('保存しました');
 };
 
-/* ========= settings modal ========= */
-const settingsBtn = document.getElementById('settingsBtn');
-const settingsModal = document.getElementById('settingsModal');
-const closeSettings = document.getElementById('closeSettings');
-const settingsBackdrop = document.getElementById('settingsBackdrop');
+/* =======================
+   Settings Modal
+======================= */
+const settingsBtn = $('settingsBtn');
+const settingsModal = $('settingsModal');
+const closeSettings = $('closeSettings');
+const settingsBackdrop = $('settingsBackdrop');
 
 function openSettings(){
   settingsModal.classList.add('open');
@@ -802,8 +827,10 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSettingsModal();
 });
 
-/* ========= backup: export/import ========= */
-document.getElementById("exportLogday").onclick = () => {
+/* =======================
+   Backup: export/import
+======================= */
+$('exportLogday').onclick = () => {
   const out = {};
   for (const k of Object.keys(localStorage)) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(k)) out[k] = JSON.parse(localStorage.getItem(k));
@@ -816,7 +843,7 @@ document.getElementById("exportLogday").onclick = () => {
 };
 
 (() => {
-  const input = document.getElementById("importFile");
+  const input = $('importFile');
   const handler = async () => {
     const file = input.files && input.files[0];
     if (!file) return;
@@ -844,10 +871,13 @@ document.getElementById("exportLogday").onclick = () => {
   input.addEventListener("input", handler);
 })();
 
-/* ========= init ========= */
+/* =======================
+   Init
+======================= */
 generateCalendar();
 showWeek();
 refreshTimeHint();
+startTimeTicker();
 </script>
 
 </body>
