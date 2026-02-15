@@ -30,6 +30,11 @@
 
     /* 下BOXと同系統の影（向きだけ逆） */
     box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+
+    /* 追加：スクロールで影を濃くする */
+#topSticky.isScrolled{
+  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+}
   }
 
   /* 上BOXの中身にだけ余白 */
@@ -953,6 +958,17 @@ byId('exportLogday').onclick = () => {
   };
   input.addEventListener("change", handler);
   input.addEventListener("input", handler);
+})();
+
+/* top shadow: scrollで濃く */
+(() => {
+  const topSticky = byId('topSticky');
+  const TH = 6; // ちょい動いたら濃く（好みで）
+  const onScroll = () => {
+    topSticky.classList.toggle('isScrolled', window.scrollY > TH);
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll(); // 初期反映
 })();
 
 /* init */
