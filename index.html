@@ -151,7 +151,7 @@
     padding:10px 12px;
 
     display:flex;
-    flex-wrap:wrap;            /* ★プレビューは次行に落とす */
+    flex-wrap:wrap;            /* プレビューは次行に落とす */
     align-items:center;
     gap:8px;
 
@@ -188,8 +188,9 @@
   }
   .iconBtn:active{transform:translateY(1px);}
 
-  /* 時計横の時間表示（未指定は薄い） */
-  #timeHint{
+  /* 時計アイコンなし：時間表示（ここタップで time picker） */
+  #timeHintWrap{
+    position:relative;
     height:34px;
     display:inline-flex;
     align-items:center;
@@ -201,13 +202,26 @@
     color:#111;
     flex:0 0 auto;
     user-select:none;
+    min-width:62px; /* "00:00"相当 */
+    justify-content:center;
   }
-  #timeHint.isAuto{ opacity:0.35; } /* 未指定（自動） */
-  #timeHint.isSet{ opacity:0.80; }  /* 指定済 */
+  #timeHint.isAuto{ opacity:0.55; }
+  #timeHint.isSet{  opacity:0.85; }
+  #timeHint.isNone{ opacity:0.25; }
+
+  /* 透明time inputを上に被せる（ここをタップするとクルクル） */
+  .timeOverlay{
+    position:absolute;
+    inset:0;
+    opacity:0;
+    z-index:10001;
+    border:none;
+    background:transparent;
+  }
 
   #logInput{
     flex:1;
-    min-width:0;               /* ★iOSのはみ出し対策 */
+    min-width:0;               /* iOSのはみ出し対策 */
     height:36px;
     resize:none;
     border-radius:12px;
@@ -229,6 +243,7 @@
     line-height: 1.5;
   }
 
+  /* expanded時だけ保存ボタン */
   #saveBtn{
     padding:0 14px;
     height:34px;
@@ -238,10 +253,14 @@
     color:#fff;
     cursor:pointer;
     white-space: nowrap;
-    display:none; /* 通常は出さない */
+    display:none;
     flex:0 0 auto;
   }
-  #inputBar.expanded #saveBtn{ display:inline-flex; align-items:center; justify-content:center; }
+  #inputBar.expanded #saveBtn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
 
   /* previewは必ず次行100% */
   #previewArea{
@@ -265,20 +284,6 @@
     top:-10000px; left:-10000px;
     width:1px; height:1px;
     opacity:0;
-  }
-
-  /* iOSで時間pickerを確実に：透明inputを時計の上に重ねる */
-  #logTime{
-    position:absolute;
-    left:12px; bottom:10px;
-    width:34px; height:34px;
-    opacity:0;
-    z-index:10001;
-  }
-  #inputBar.expanded #logTime{
-    left:12px;
-    bottom:auto;
-    top:12px;
   }
 
   /* ▼設定モーダル */
@@ -343,82 +348,48 @@
     transform:translateX(-50%) translateY(-4px);
   }
 
-  /* timeHint */
-#timeHintWrap{
-  position:relative;
-  height:34px;
-  display:inline-flex;
-  align-items:center;
-  padding:0 10px;
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,0.10);
-  background:rgba(0,0,0,0.02);
-  font-size:14px;
-  color:#111;
-  flex:0 0 auto;
-  user-select:none;
-  min-width:62px; /* "00:00"分 */
-  justify-content:center;
-}
-#timeHint.isAuto{ opacity:0.55; }
-#timeHint.isSet{ opacity:0.85; }
-#timeHint.isNone{ opacity:0.25; }
+  /* ＋メニュー（簡易ボトムシート） */
+  #plusSheet{
+    position:fixed;
+    inset:0;
+    display:none;
+    z-index:25000;
+  }
+  #plusSheet.open{ display:block; }
 
-/* 透明time inputを上に被せる */
-.timeOverlay{
-  position:absolute;
-  inset:0;
-  opacity:0;
-  z-index:10001;
-  border:none;
-  background:transparent;
-}
+  #plusSheetBackdrop{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.35);
+  }
 
-/* ＋メニュー（簡易ボトムシート） */
-#plusSheet{
-  position:fixed;
-  inset:0;
-  display:none;
-  z-index:25000;
-}
-#plusSheet.open{ display:block; }
+  #plusSheetPanel{
+    position:absolute;
+    left:12px;
+    right:12px;
+    bottom:12px;
+    background:#fff;
+    border-radius:16px;
+    padding:10px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.22);
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
 
-#plusSheetBackdrop{
-  position:absolute;
-  inset:0;
-  background:rgba(0,0,0,0.35);
-}
-
-#plusSheetPanel{
-  position:absolute;
-  left:12px;
-  right:12px;
-  bottom:12px;
-  background:#fff;
-  border-radius:16px;
-  padding:10px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.22);
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
-.sheetBtn{
-  height:44px;
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,0.12);
-  background:#fff;
-  font-size:16px;
-  cursor:pointer;
-}
-.sheetBtn.cancel{
-  background:rgba(0,0,0,0.04);
-}
-.sheetBtn.danger{
-  border-color:rgba(0,0,0,0.10);
-  background:rgba(0,0,0,0.02);
-}
-
+  .sheetBtn{
+    height:44px;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.12);
+    background:#fff;
+    font-size:16px;
+    cursor:pointer;
+  }
+  .sheetBtn.cancel{ background:rgba(0,0,0,0.04); }
+  .sheetBtn.danger{
+    border-color:rgba(0,0,0,0.10);
+    background:rgba(0,0,0,0.02);
+  }
 </style>
 </head>
 <body>
@@ -456,7 +427,7 @@
 <div id="inputBar">
   <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
 
-  <!-- 時計アイコンなし：ここタップで time picker -->
+  <!-- 時計アイコンなし：時間表示クリックで time picker -->
   <div id="timeHintWrap" title="時間">
     <div id="timeHint" class="isAuto"></div>
     <input id="logTime" type="time" class="timeOverlay">
@@ -507,26 +478,29 @@
 
 <script>
 /* =======================
+   DOM helper（$は使わない）
+======================= */
+function byId(id){ return document.getElementById(id); }
+
+/* =======================
    State / Utils
 ======================= */
 let viewMode = 'week';
 let currentDate = new Date().toISOString().slice(0,10);
 
-const $ = (id) => document.getElementById(id);
-const pad2 = (n) => String(n).padStart(2,'0');
-const nowHHMM = () => {
+function pad2(n){ return String(n).padStart(2,'0'); }
+function nowHHMM(){
   const d = new Date();
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-};
-
+}
 function formatYMD(d){ return d.toISOString().slice(0,10); }
 
 function renderDateHeader(dateStr){
   const d = new Date(dateStr);
   const dateText = d.toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'});
   const weekdayText = d.toLocaleDateString('ja-JP',{weekday:'short'});
-  $('currentDate').textContent = dateText;
-  $('currentWeekday').textContent = `（${weekdayText}）`;
+  byId('currentDate').textContent = dateText;
+  byId('currentWeekday').textContent = `（${weekdayText}）`;
 }
 
 function startOfWeek(dateStr){
@@ -556,12 +530,18 @@ function getDayData(dateKey){
 function saveDayData(dateKey, dayData){
   localStorage.setItem(dateKey, JSON.stringify(dayData));
 }
+
+/* ★時間なしは一番下に並ぶ */
 function sortEntries(dayData){
-  dayData.entries.sort((a,b) => (a.time || '').localeCompare(b.time || ''));
+  dayData.entries.sort((a,b) => {
+    const ta = (a.time && a.time.trim()) ? a.time : '99:99';
+    const tb = (b.time && b.time.trim()) ? b.time : '99:99';
+    return ta.localeCompare(tb);
+  });
 }
 
 function showToast(message){
-  const toast = $('toast');
+  const toast = byId('toast');
   toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 1200);
@@ -571,7 +551,7 @@ function showToast(message){
    Week bar / Calendar
 ======================= */
 function renderWeekBar(dateStr){
-  const bar = $('weekBar');
+  const bar = byId('weekBar');
   bar.style.display = (viewMode === 'week') ? 'grid' : 'none';
   if (viewMode !== 'week') return;
 
@@ -599,7 +579,7 @@ function renderWeekBar(dateStr){
 }
 
 function generateCalendar(){
-  const cal = $('calendar');
+  const cal = byId('calendar');
   cal.innerHTML = '';
 
   const d = new Date(currentDate);
@@ -640,7 +620,7 @@ function generateCalendar(){
 function loadDay(dateStr){
   renderDateHeader(dateStr);
 
-  const entriesDiv = $('entries');
+  const entriesDiv = byId('entries');
   entriesDiv.innerHTML = '';
 
   const saved = getDayData(dateStr);
@@ -652,7 +632,7 @@ function loadDay(dateStr){
 
       const time = document.createElement('span');
       time.className = 'time';
-      time.textContent = entry.time || '•';
+      time.textContent = (entry.time && entry.time.trim()) ? entry.time : '•';
 
       const text = document.createElement('span');
       text.className = 'text';
@@ -686,9 +666,9 @@ function loadDay(dateStr){
 /* =======================
    View Switch / Nav
 ======================= */
-const weekBtn = $('weekBtn');
-const monthBtn = $('monthBtn');
-const calEl = $('calendar');
+const weekBtn  = byId('weekBtn');
+const monthBtn = byId('monthBtn');
+const calEl    = byId('calendar');
 
 function showWeek(){
   viewMode = 'week';
@@ -712,19 +692,19 @@ function showMonth(){
   monthBtn.addEventListener(evt, e => { e.preventDefault(); showMonth(); }, {passive:false});
 });
 
-$('prev').onclick = () => {
+byId('prev').onclick = () => {
   currentDate = shiftByView(currentDate, -1);
   if (viewMode === 'month') generateCalendar();
   loadDay(currentDate);
   renderWeekBar(currentDate);
 };
-$('next').onclick = () => {
+byId('next').onclick = () => {
   currentDate = shiftByView(currentDate, 1);
   if (viewMode === 'month') generateCalendar();
   loadDay(currentDate);
   renderWeekBar(currentDate);
 };
-$('today').onclick = () => {
+byId('today').onclick = () => {
   currentDate = new Date().toISOString().slice(0,10);
   if (viewMode === 'month') generateCalendar();
   loadDay(currentDate);
@@ -734,53 +714,39 @@ $('today').onclick = () => {
 /* =======================
    Input Bar
 ======================= */
-function $(id){ return document.getElementById(id); }
+const inputBar = byId('inputBar');
+const plusBtn  = byId('plusBtn');
+const logInput = byId('logInput');
+const saveBtn  = byId('saveBtn');
 
-/* ========= sort: 時間なしは一番下 ========= */
-function sortEntries(dayData){
-  dayData.entries.sort((a,b) => {
-    const ta = (a.time && a.time.trim()) ? a.time : '99:99';
-    const tb = (b.time && b.time.trim()) ? b.time : '99:99';
-    return ta.localeCompare(tb);
-  });
-}
+const timeHint  = byId('timeHint');
+const logTimeEl = byId('logTime');
 
-/* ========= input bar ========= */
-const inputBar = $('inputBar');
-const plusBtn  = $('plusBtn');
-const logInput = $('logInput');
-const saveBtn  = $('saveBtn');
-
-const timeHint  = $('timeHint');
-const logTimeEl = $('logTime');
-
-const fileInputEl = $('fileInput');
-const photoEl     = $('pickPhotoInput');
-const cameraEl    = $('takePhotoInput');
-const previewArea = $('previewArea');
+const fileInputEl = byId('fileInput');
+const photoEl     = byId('pickPhotoInput');
+const cameraEl    = byId('takePhotoInput');
+const previewArea = byId('previewArea');
 
 /* ＋シート */
-const plusSheet = $('plusSheet');
-const plusSheetBackdrop = $('plusSheetBackdrop');
-const actPhoto = $('actPhoto');
-const actCamera= $('actCamera');
-const actFile  = $('actFile');
-const actNoTime= $('actNoTime');
-const actCancel= $('actCancel');
+const plusSheet = byId('plusSheet');
+const plusSheetBackdrop = byId('plusSheetBackdrop');
+const actPhoto = byId('actPhoto');
+const actCamera= byId('actCamera');
+const actFile  = byId('actFile');
+const actNoTime= byId('actNoTime');
+const actCancel= byId('actCancel');
 
 /* timeMode: 'auto'（未指定=現在時刻で保存）, 'set'（指定時間）, 'none'（時間なし） */
 let timeMode = 'auto';
-let selectedTime = ''; // timeMode='set'のときだけ使う
+let selectedTime = '';
 let timeTicker = null;
-
-function nowHHMM(){ return new Date().toTimeString().slice(0,5); }
 
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
 
 function refreshTimeHint(){
   if (timeMode === 'none') {
-    timeHint.textContent = '';          // ★ブランク表示
+    timeHint.textContent = '';
     timeHint.className = 'isNone';
     return;
   }
@@ -789,8 +755,7 @@ function refreshTimeHint(){
     timeHint.className = 'isSet';
     return;
   }
-  // auto
-  timeHint.textContent = nowHHMM();     // ★未指定でも表示は現在時刻
+  timeHint.textContent = nowHHMM();
   timeHint.className = 'isAuto';
 }
 
@@ -801,18 +766,14 @@ function startTimeTicker(){
   }, 1000);
 }
 
-/* time picker を開く直前：基準値を現在時刻に（iOSのリセット対策） */
+/* iOS「リセットが前回値に戻る」対策：
+   pickerを開く直前に value を必ず “今” にセットしておく */
 logTimeEl.addEventListener('pointerdown', () => {
-  // none状態から触ったら auto に戻す
   if (timeMode === 'none') timeMode = 'auto';
-
-  // ピッカーの“基準値”を常に今にしておく
-  logTimeEl.value = nowHHMM();
-  // まだ確定してないので set にはしない
+  logTimeEl.value = nowHHMM();   // ここが肝
   refreshTimeHint();
 }, {passive:true});
 
-/* 変更が入ったら set */
 logTimeEl.addEventListener('change', () => {
   selectedTime = logTimeEl.value || '';
   timeMode = selectedTime ? 'set' : 'auto';
@@ -821,7 +782,7 @@ logTimeEl.addEventListener('change', () => {
   logInput.focus();
 });
 
-/* フォーカスで展開 */
+/* 入力で展開 */
 logInput.addEventListener('focus', expandInputBar);
 
 /* outside tap to close */
@@ -859,13 +820,13 @@ actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
 actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
 
-/* ★指定しない：時間なしモードへ */
+/* 指定しない（時間なし） */
 actNoTime.onclick = () => {
   closePlusSheet();
   timeMode = 'none';
   selectedTime = '';
-  logTimeEl.value = '';
-  refreshTimeHint();
+  logTimeEl.value = '';     // time inputは空
+  refreshTimeHint();        // 表示はブランク
   expandInputBar();
   logInput.focus();
 };
@@ -920,11 +881,11 @@ async function handleAttachment(file){
 saveBtn.onclick = () => {
   const text = logInput.value.trim();
 
-  // time決定
+  // time決定（未指定:auto→現在時刻 / set→指定 / none→""）
   let time = '';
   if (timeMode === 'set') time = selectedTime;
   else if (timeMode === 'auto') time = nowHHMM();
-  else time = ''; // none
+  else time = '';
 
   if(!text && !pendingDataUrl){
     collapseInputBar();
@@ -935,7 +896,7 @@ saveBtn.onclick = () => {
   const dayData = getDayData(currentDate);
 
   dayData.entries.push({
-    time, // ★ noneなら "" で入る → sortで一番下
+    time, // noneなら "" → sortで一番下
     text: text || (pendingMime.startsWith('image/') ? '📷 写真' : `📎 ${pendingName || '添付'}`),
     photo: pendingMime.startsWith('image/') ? pendingDataUrl : null,
     fileName: pendingMime.startsWith('image/') ? null : pendingName
@@ -945,7 +906,7 @@ saveBtn.onclick = () => {
   saveDayData(currentDate, dayData);
   loadDay(currentDate);
 
-  // reset（投稿後は auto に戻す：表示＝現在時刻、保存も現在時刻）
+  // reset：投稿後は auto に戻す（表示＝現在時刻、保存も現在時刻）
   logInput.value = '';
   previewArea.innerHTML = '';
   pendingDataUrl = null;
@@ -954,7 +915,7 @@ saveBtn.onclick = () => {
 
   timeMode = 'auto';
   selectedTime = '';
-  logTimeEl.value = '';
+  logTimeEl.value = '';     // 次回 picker の基準は pointerdown で now に強制
   refreshTimeHint();
 
   collapseInputBar();
@@ -962,18 +923,13 @@ saveBtn.onclick = () => {
   showToast('保存しました');
 };
 
-/* init */
-refreshTimeHint();
-startTimeTicker();
-
-
 /* =======================
    Settings Modal
 ======================= */
-const settingsBtn = $('settingsBtn');
-const settingsModal = $('settingsModal');
-const closeSettings = $('closeSettings');
-const settingsBackdrop = $('settingsBackdrop');
+const settingsBtn = byId('settingsBtn');
+const settingsModal = byId('settingsModal');
+const closeSettings = byId('closeSettings');
+const settingsBackdrop = byId('settingsBackdrop');
 
 function openSettings(){
   settingsModal.classList.add('open');
@@ -993,7 +949,7 @@ document.addEventListener('keydown', (e) => {
 /* =======================
    Backup: export/import
 ======================= */
-$('exportLogday').onclick = () => {
+byId('exportLogday').onclick = () => {
   const out = {};
   for (const k of Object.keys(localStorage)) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(k)) out[k] = JSON.parse(localStorage.getItem(k));
@@ -1006,7 +962,7 @@ $('exportLogday').onclick = () => {
 };
 
 (() => {
-  const input = $('importFile');
+  const input = byId('importFile');
   const handler = async () => {
     const file = input.files && input.files[0];
     if (!file) return;
