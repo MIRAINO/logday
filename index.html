@@ -799,19 +799,18 @@ function attachSwipeHandlers(wrapEl, contentEl){
     // 左スワイプのみ（dxはマイナス）
     swipeLock.moved = true;
 
-    let x = dx;
-    // 右方向は閉じ方向にだけ少し許可
-    if (wrapEl.classList.contains('open')) {
-      // open時は dx が 0 から右へ戻す方向で閉じる
-      x = SWIPE_OPEN_X + dx;
-    }
+    // ベース位置（閉→0 / 開→SWIPE_OPEN_X）
+const base = wrapEl.classList.contains('open') ? SWIPE_OPEN_X : 0;
 
-    // clamp
-    x = Math.min(0, x);
-    x = Math.max(SWIPE_OPEN_X, x);
+// 左へスワイプ（dxは負）で動かす。右は0まで。
+let x = base + dx;
 
-    swipeLock.currentX = x;
-    contentEl.style.transform = `translateX(${x}px)`;
+// clamp：0〜SWIPE_FULL_DELETE まで許可（←ここがポイント）
+x = Math.min(0, x);
+x = Math.max(SWIPE_FULL_DELETE, x);
+
+swipeLock.currentX = x;
+contentEl.style.transform = `translateX(${x}px)`;
   }, {passive:true});
 
   const finish = () => {
@@ -834,15 +833,11 @@ function attachSwipeHandlers(wrapEl, contentEl){
 
     // ① フルスワイプで即削除
 if (x <= SWIPE_FULL_DELETE) {
-  // 見た目：左へ飛ばす
   contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
-  // 即削除
   deleteEntryById(wrapEl.dataset.id, wrapEl);
   swipeLock.active = false;
   return;
 }
-
-// ② 通常の open/close
 if (x <= SWIPE_THRESHOLD) {
   wrapEl.classList.add('open');
   openSwipeId = wrapEl.dataset.id;
