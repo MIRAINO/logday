@@ -552,11 +552,14 @@ function getDayData(dateKey){
   const dayData = JSON.parse(localStorage.getItem(dateKey) || '{}');
   dayData.entries = dayData.entries || [];
 
-  // 既存データ互換：id / createdAt が無い古いentryを補完
+  // 既存データ互換：id/createdAt が無いものは補完して "固定" する
+  let changed = false;
   dayData.entries.forEach(e=>{
-    if(!e.id) e.id = uid();
-    if(e.createdAt == null) e.createdAt = Date.now();
+    if(!e.id){ e.id = uid(); changed = true; }
+    if(e.createdAt == null){ e.createdAt = Date.now(); changed = true; }
   });
+
+  if (changed) saveDayData(dateKey, dayData);
 
   return dayData;
 }
@@ -694,8 +697,8 @@ function loadDay(dateStr){
       }
 
         div.addEventListener('click', () => {
-        beginEditEntry(entry);
-      });
+  beginEditById(entry.id);
+});
 
       entriesDiv.appendChild(div);
     });
@@ -945,6 +948,16 @@ function beginEditEntry(entry){
   showToast('編集モード');
 }
 
+function beginEditById(entryId){
+  const dayData = getDayData(currentDate);
+  const entry = (dayData.entries || []).find(e => e.id === entryId);
+  if (!entry) {
+    showToast('編集対象が見つからない…');
+    return;
+  }
+  beginEditEntry(entry);
+}
+
 let isSaving = false;
 
 /* save */
@@ -1013,6 +1026,8 @@ saveBtn.onclick = () => {
     sortEntries(dayData);
     saveDayData(currentDate, dayData);
     loadDay(currentDate);
+
+    console.log("editingId", editingId, "found", dayData.entries.some(e=>e.id===editingId));
 
     // ---- リセット（次入力を気持ちよく） ----
     editingId = null;
