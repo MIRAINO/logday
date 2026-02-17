@@ -744,8 +744,9 @@ function generateCalendar(){
   }
 }
 
-const SWIPE_OPEN_X = -84;      // 削除ボタン幅（CSSと合わせる）
-const SWIPE_THRESHOLD = -42;   // ここまで行ったら開く
+const SWIPE_OPEN_X = -84;
+const SWIPE_THRESHOLD = -42;
+const SWIPE_FULL_DELETE = -170; // ここまで行ったら即削除
 let openSwipeId = null;        // 今開いてるentryのid
 let swipeLock = { active:false, moved:false, id:null, startX:0, startY:0, currentX:0 };
 
