@@ -530,7 +530,7 @@
     <input id="logTime" type="time" class="timeOverlay">
   </div>
 
-  <button id="noTimeBtn" type="button" aria-label="時間を指定しない">指定しない</button>
+  
 
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
@@ -1013,7 +1013,7 @@ const saveBtn  = byId('saveBtn');
 
 const timeHint  = byId('timeHint');
 const logTimeEl = byId('logTime');
-const noTimeBtn = byId('noTimeBtn');
+
 
 const fileInputEl = byId('fileInput');
 const photoEl     = byId('pickPhotoInput');
@@ -1030,15 +1030,9 @@ const actCancel= byId('actCancel');
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
 
-function showNoTimeBtn(){ noTimeBtn.classList.add('show'); }
-function hideNoTimeBtn(){ noTimeBtn.classList.remove('show'); }
+
 
 function refreshTimeHint(){
-  if (timeMode === 'none') {
-    timeHint.textContent = '';
-    timeHint.className = 'isNone';
-    return;
-  }
   if (timeMode === 'set' && selectedTime) {
     timeHint.textContent = selectedTime;
     timeHint.className = 'isSet';
@@ -1055,34 +1049,22 @@ function startTimeTicker(){
   }, 1000);
 }
 
-noTimeBtn.onclick = () => {
-  timeMode = 'none';
-  selectedTime = '';
-  logTimeEl.value = '';
-  refreshTimeHint();
-  hideNoTimeBtn();
-  expandInputBar();
-  logInput.focus();
-};
+
 
 logTimeEl.addEventListener('pointerdown', () => {
-  if (timeMode === 'none') timeMode = 'auto';
-  logTimeEl.value = nowHHMM();
+  logTimeEl.value = nowHHMM();   // 今時刻を初期値に
   refreshTimeHint();
-  showNoTimeBtn();
 }, {passive:true});
 
 logTimeEl.addEventListener('change', () => {
   selectedTime = logTimeEl.value || '';
   timeMode = selectedTime ? 'set' : 'auto';
   refreshTimeHint();
-  hideNoTimeBtn();
   expandInputBar();
   logInput.focus();
 });
 
-logTimeEl.addEventListener('focus', showNoTimeBtn);
-logTimeEl.addEventListener('blur', () => setTimeout(hideNoTimeBtn, 140));
+
 
 logInput.addEventListener('focus', expandInputBar);
 
@@ -1187,17 +1169,17 @@ function beginEditEntry(entry){
   logInput.value = entry.text || "";
 
   if (!entry.time) {
-    timeMode = 'none';
+    timeMode = 'auto';
     selectedTime = '';
     logTimeEl.value = '';
     refreshTimeHint();
-    hideNoTimeBtn();
+    
   } else {
     timeMode = 'set';
     selectedTime = entry.time;
     logTimeEl.value = entry.time;
     refreshTimeHint();
-    showNoTimeBtn();
+    
   }
 
   // 添付保持（写真はDataURLが残る）
