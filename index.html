@@ -1004,7 +1004,7 @@ function showMonth(){
 toggleBtn.onclick = () => (viewMode === 'week') ? showMonth() : showWeek();
 
 /* =======================
-   Input Bar
+   Input Bar  ※noTimeBtn撤去版
 ======================= */
 const inputBar = byId('inputBar');
 const plusBtn  = byId('plusBtn');
@@ -1013,7 +1013,6 @@ const saveBtn  = byId('saveBtn');
 
 const timeHint  = byId('timeHint');
 const logTimeEl = byId('logTime');
-
 
 const fileInputEl = byId('fileInput');
 const photoEl     = byId('pickPhotoInput');
@@ -1029,8 +1028,6 @@ const actCancel= byId('actCancel');
 
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
-
-
 
 function refreshTimeHint(){
   if (timeMode === 'set' && selectedTime) {
@@ -1049,13 +1046,14 @@ function startTimeTicker(){
   }, 1000);
 }
 
-
-
+/* 時計タップ → そのまま “くるくる” */
 logTimeEl.addEventListener('pointerdown', () => {
-  logTimeEl.value = nowHHMM();   // 今時刻を初期値に
+  // iOSのtime pickerが値なしだと出にくいことがあるので、初期値だけ入れておく
+  logTimeEl.value = nowHHMM();
   refreshTimeHint();
-}, {passive:true});
+}, { passive:true });
 
+/* 時刻が選ばれたら set 扱い */
 logTimeEl.addEventListener('change', () => {
   selectedTime = logTimeEl.value || '';
   timeMode = selectedTime ? 'set' : 'auto';
@@ -1064,31 +1062,26 @@ logTimeEl.addEventListener('change', () => {
   logInput.focus();
 });
 
-
-
 logInput.addEventListener('focus', expandInputBar);
 
+/* 入力バー外タップで閉じる（編集も解除） */
 document.addEventListener('pointerdown', (e) => {
   if (document.activeElement !== logInput) return;
   if (inputBar.contains(e.target)) return;
   logInput.blur();
   collapseInputBar();
   editingId = null;
-});
+}, { passive:true });
 
+/* IME Enter誤爆防止（Mac Chrome 日本語入力） */
 let isComposing = false;
-
 logInput.addEventListener('compositionstart', () => { isComposing = true; });
 logInput.addEventListener('compositionend',   () => { isComposing = false; });
 
 logInput.addEventListener('keydown', (e) => {
-  // IME変換中のEnterは「確定」なので保存しない
-  if (isComposing || e.isComposing || e.keyCode === 229) return;
+  if (isComposing || e.isComposing || e.keyCode === 229) return; // 変換確定Enterは保存しない
+  if (e.key === 'Enter' && e.shiftKey) return; // Shift+Enter = 改行
 
-  // Shift+Enter は改行
-  if (e.key === 'Enter' && e.shiftKey) return;
-
-  // Enter で保存
   if (e.key === 'Enter') {
     e.preventDefault();
     saveBtn.click();
@@ -1114,6 +1107,7 @@ actCancel.onclick = closePlusSheet;
 actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
 actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
+
 
 /* =======================
    Attachments
