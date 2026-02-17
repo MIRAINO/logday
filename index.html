@@ -174,7 +174,7 @@
   }
 
 /* =======================
-   Input Bar (bottom) 置換用
+   Input Bar (bottom) 置換用（崩れない版）
 ======================= */
 
 #inputBar{
@@ -191,6 +191,7 @@
 
   z-index:9999;
   box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+  max-height:320px;
 }
 
 /* ▼ 通常時：横並び（＋ / 時刻 / 入力 / 保存） */
@@ -199,7 +200,7 @@
 
 #logInput{
   flex:1 1 auto;             /* ★横に伸びる */
-  min-width:0;               /* ★段落ち防止 */
+  min-width:0;               /* ★段落ち防止（超重要） */
   height:36px;
   resize:none;
 
@@ -212,6 +213,9 @@
   background:#fff;
   font-size:16px;
   line-height:1.4;
+
+  /* ★“1行っぽく”見せる */
+  overflow:hidden;
 }
 
 #saveBtn{
@@ -230,14 +234,15 @@
   justify-content:center;
 }
 
-/* プレビューは通常は“行を取らない” */
+/* プレビューは：通常は非表示（1段固定を守る） */
 #previewArea{
-  display:none;              /* ★これが段落ちの根本対策 */
+  display:none;
   flex:0 0 100%;
   width:100%;
 }
-#previewArea.hasContent{     /* 添付がある時だけ表示 */
+#inputBar.expanded #previewArea.hasContent{
   display:block;
+  order:5;
 }
 
 /* ▼ 展開時：写真1の形（上に大きい入力欄 / 下にボタン列） */
@@ -260,11 +265,14 @@
   width:100%;
   order:1;
 
-  height:64px;               /* 写真1の雰囲気 */
+  height:120px;              /* ←写真1寄せ。64にしたいなら64でもOK */
+  max-height:180px;
   border-radius:18px;
   border:1px solid rgba(0,0,0,0.16);
-  padding:14px 14px;
-  line-height:1.4;
+  padding:10px 12px;
+  line-height:1.5;
+
+  overflow:auto;             /* 展開時は普通にスクロール */
 }
 
 /* 展開時：下段にボタン列 */
@@ -278,12 +286,7 @@
   border-radius:14px;
 }
 
-/* 展開時はプレビューも見せる（空なら出ない） */
-#inputBar.expanded #previewArea.hasContent{
-  order:5;
-}
-
-/* --- 既存の部品たち（そのまま使える） --- */
+/* --- 既存の部品（そのまま） --- */
 .iconBtn{
   width:34px; height:34px;
   border-radius:12px;
@@ -335,6 +338,15 @@
   margin-top:8px;
   color:#666;
   font-size:14px;
+}
+
+/* ★これが抜けると「ファイルを選択」が出て崩れる */
+.fileInput{
+  position:fixed;
+  top:-10000px; left:-10000px;
+  width:1px; height:1px;
+  opacity:0;
+  pointer-events:none;
 }
 
 
@@ -1013,8 +1025,10 @@ function showMonth(){
 }
 toggleBtn.onclick = () => (viewMode === 'week') ? showMonth() : showWeek();
 
+
+
 /* =======================
-   Input Bar  ※noTimeBtn撤去版
+   Input Bar 置換（beforeinput / input / blur）
 ======================= */
 const inputBar = byId('inputBar');
 const plusBtn  = byId('plusBtn');
@@ -1039,6 +1053,10 @@ const actCancel= byId('actCancel');
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
 
+function setPreviewVisible(isOn){
+  previewArea.classList.toggle('hasContent', !!isOn);
+}
+
 function refreshTimeHint(){
   if (timeMode === 'set' && selectedTime) {
     timeHint.textContent = selectedTime;
@@ -1058,53 +1076,60 @@ function startTimeTicker(){
 
 /* 時計タップ → そのまま “くるくる” */
 logTimeEl.addEventListener('pointerdown', () => {
-  // iOSのtime pickerが値なしだと出にくいことがあるので、初期値だけ入れておく
-  logTimeEl.value = nowHHMM();
+  logTimeEl.value = nowHHMM();  // iOS対策：空だとpicker出にくい時がある
   refreshTimeHint();
 }, { passive:true });
 
-/* 時刻が選ばれたら set 扱い */
 logTimeEl.addEventListener('change', () => {
   selectedTime = logTimeEl.value || '';
   timeMode = selectedTime ? 'set' : 'auto';
   refreshTimeHint();
+
+  // 時計を触ったら入力しやすい状態へ
   expandInputBar();
   logInput.focus();
 });
 
-logInput.addEventListener('focus', expandInputBar);
+/* --- フォーカスで展開（写真1） --- */
+logInput.addEventListener('focus', () => {
+  expandInputBar();
+});
 
-/* 入力バー外タップで閉じる（編集も解除） */
-document.addEventListener('pointerdown', (e) => {
-  if (document.activeElement !== logInput) return;
-  if (inputBar.contains(e.target)) return;
-  logInput.blur();
-  collapseInputBar();
-  editingId = null;
-}, { passive:true });
-
-/* IME Enter誤爆防止（Mac Chrome 日本語入力） */
+/* ✅ beforeinput/input：状態を“整える”だけ（保存はしない） */
 let isComposing = false;
-
 logInput.addEventListener('compositionstart', () => { isComposing = true; });
 logInput.addEventListener('compositionend',   () => { isComposing = false; });
 
-// Enterは「改行」：何もしない（デフォルト挙動に任せる）
-logInput.addEventListener('keydown', (e) => {
-  // IME変換中は触らない
-  if (isComposing || e.isComposing || e.keyCode === 229) return;
-
-  // ここでEnter保存をしない！
-  // つまり preventDefault もしない
+logInput.addEventListener('beforeinput', (e) => {
+  // 文字が入り始めたら展開を維持（iOSで効くこと多い）
+  if (!inputBar.classList.contains('expanded')) expandInputBar();
 });
 
-// iOSの「☑️（完了）」は基本 blur を発火させるので、blurで折りたたむ
+logInput.addEventListener('input', () => {
+  // ここでは保存しない。UI状態だけ。
+  // 例：複数行になってもOK（エントリーはそのまま保存ボタンで）
+});
+
+/* ✅ blur：iOSの「☑️（完了）」→ blur になるので “写真2（通常）” に戻す
+   ※ テキストは消さない */
 logInput.addEventListener('blur', () => {
-  // 少し待ってから（保存ボタンタップ等の競合回避）
   setTimeout(() => {
-    // テキストは消さない。見た目だけ戻す。
     collapseInputBar();
   }, 80);
+});
+
+/* 入力バー外タップで閉じる（テキストは残す） */
+document.addEventListener('pointerdown', (e) => {
+  if (document.activeElement !== logInput) return;
+  if (inputBar.contains(e.target)) return;
+  logInput.blur();            // blur側でcollapseされる
+  editingId = null;           // 編集解除だけ
+}, { passive:true });
+
+/* Enterは改行（何もしない） */
+logInput.addEventListener('keydown', (e) => {
+  if (isComposing || e.isComposing || e.keyCode === 229) return;
+  // preventDefaultしない＝改行になる
 });
 
 /* =======================
@@ -1125,7 +1150,6 @@ actCancel.onclick = closePlusSheet;
 actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
 actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
-
 
 /* =======================
    Attachments
@@ -1159,9 +1183,9 @@ async function handleAttachment(file){
     previewArea.appendChild(div);
   }
 
+  setPreviewVisible(true);
   expandInputBar();
   logInput.focus();
-  previewArea.classList.add('hasContent');
 }
 
 [fileInputEl, photoEl, cameraEl].forEach(inp => {
@@ -1171,6 +1195,11 @@ async function handleAttachment(file){
     e.target.value = '';
   });
 });
+
+/* 保存後のリセット時にpreview表示も戻すため（saveBtn側の最後に入れるのが理想）
+   すでにあなたのsaveBtn.onclick内で previewArea.innerHTML='' してるので、
+   その直後に setPreviewVisible(false); を足してね */
+
 
 /* =======================
    Edit (B)
@@ -1285,6 +1314,7 @@ saveBtn.onclick = () => {
 
     logInput.value = '';
     previewArea.innerHTML = '';
+    setPreviewVisible(false);
     pendingDataUrl = null;
     pendingMime = '';
     pendingName = '';
