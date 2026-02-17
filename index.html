@@ -913,7 +913,7 @@ function loadDay(dateStr){
   const delBtn = document.createElement('button');
   delBtn.className = 'entryDeleteBtn';
   delBtn.type = 'button';
-  delBtn.innerHTML = `<span class="icon">🗑️</span>`;
+  delBtn.innerHTML = `<span class="icon">🗑️</span><span class="label">削除</span>`;
 
   delBtn.onclick = (ev) => {
   ev.stopPropagation();
