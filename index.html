@@ -506,6 +506,8 @@
 <div id="toast">保存しました</div>
 
 <script>
+
+
 function byId(id){ return document.getElementById(id); }
 
 let viewMode = 'week';
@@ -516,6 +518,19 @@ function nowHHMM(){
   const d = new Date();
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+function uid(){
+  return "e_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+}
+
+function timeToMinutes(t){
+  if(!t) return 999999; // 無時間は最後に回す
+  const m = String(t).match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return 999999;
+  const h = parseInt(m[1],10);
+  const mi = parseInt(m[2],10);
+  return h*60 + mi;
+}
+
 function formatYMD(d){ return d.toISOString().slice(0,10); }
 
 function renderNavDate(dateStr){
@@ -536,16 +551,30 @@ function startOfWeek(dateStr){
 function getDayData(dateKey){
   const dayData = JSON.parse(localStorage.getItem(dateKey) || '{}');
   dayData.entries = dayData.entries || [];
+
+  // 既存データ互換：id / createdAt が無い古いentryを補完
+  dayData.entries.forEach(e=>{
+    if(!e.id) e.id = uid();
+    if(e.createdAt == null) e.createdAt = Date.now();
+  });
+
   return dayData;
 }
-function saveDayData(dateKey, dayData){
-  localStorage.setItem(dateKey, JSON.stringify(dayData));
-}
+
 function sortEntries(dayData){
-  dayData.entries.sort((a,b) => {
-    const ta = (a.time && a.time.trim()) ? a.time : '99:99';
-    const tb = (b.time && b.time.trim()) ? b.time : '99:99';
-    return ta.localeCompare(tb);
+  const arr = dayData.entries || [];
+  arr.sort((a,b)=>{
+    const ta = timeToMinutes(a.time);
+    const tb = timeToMinutes(b.time);
+    if (ta !== tb) return ta - tb;
+
+    // 同時刻は作成順で安定化（古い→新しい）
+    const ca = a.createdAt ?? 0;
+    const cb = b.createdAt ?? 0;
+    if (ca !== cb) return ca - cb;
+
+    // 最後の保険：id文字列
+    return String(a.id||"").localeCompare(String(b.id||""));
   });
 }
 
@@ -630,11 +659,13 @@ function loadDay(dateStr){
   entriesDiv.innerHTML = '';
 
   const saved = getDayData(dateStr);
+  sortEntries(saved);
 
   if(saved.entries && saved.entries.length){
     saved.entries.forEach(entry=>{
       const div = document.createElement('div');
       div.className = 'entry';
+      div.dataset.id = entry.id || '';
 
       const time = document.createElement('span');
       time.className = 'time';
@@ -875,7 +906,10 @@ saveBtn.onclick = () => {
   }
 
   const dayData = getDayData(currentDate);
-  dayData.entries.push({
+  
+    dayData.entries.push({
+    id: uid(),
+    createdAt: Date.now(),
     time,
     text: text || (pendingMime.startsWith('image/') ? '📷 写真' : `📎 ${pendingName || '添付'}`),
     photo: pendingMime.startsWith('image/') ? pendingDataUrl : null,
