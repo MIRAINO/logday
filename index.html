@@ -2,14 +2,15 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" 
-      content="width=device-width, 
-               initial-scale=1, 
-               maximum-scale=1, 
-               minimum-scale=1, 
-               user-scalable=no, 
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1,
+               maximum-scale=1,
+               minimum-scale=1,
+               user-scalable=no,
                viewport-fit=cover">
 <title>LOGDAY</title>
+
 <style>
   body{
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
@@ -20,33 +21,26 @@
   }
 
   /* =======================
-     Top (sticky)  ※下のBOXと同じ系統に
+     Top (sticky)
   ======================= */
   #topSticky{
     position: sticky;
     top: 0;
     z-index: 16000;
 
-    /* 端まで */
-    margin: -20px -20px 12px;  /* body padding(20px)を打ち消して端へ */
+    margin: -20px -20px 12px;
     padding-top: env(safe-area-inset-top, 0px);
 
     background:#fff;
     border-bottom:1px solid #ddd;
 
-    /* 下BOXと同系統の影（向きだけ逆） */
     box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-
-    /* 追加：スクロールで影を濃くする */
-#topSticky.isScrolled{
-  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
-}
+  }
+  #topSticky.isScrolled{
+    box-shadow: 0 10px 26px rgba(0,0,0,0.18);
   }
 
-  /* 上BOXの中身にだけ余白 */
-  #topInner{
-    padding: 10px 12px 12px; /* inputBarのpaddingに寄せた */
-  }
+  #topInner{ padding: 10px 12px 12px; }
 
   #nav{
     display:flex;
@@ -55,7 +49,6 @@
     margin-bottom:10px;
   }
 
-  /* 左寄せ・少し大きい日付 */
   #navDate{
     font-size:18px;
     font-weight:600;
@@ -71,7 +64,6 @@
     gap:8px;
   }
 
-  /* 右側：トグル & 設定（同サイズ） */
   .iconOnly{
     width:36px; height:32px; padding:0;
     display:inline-flex; align-items:center; justify-content:center;
@@ -83,9 +75,8 @@
     line-height:1;
   }
   .iconOnly:active{ transform: translateY(1px); }
-
   #toggleBtn{ font-size:14px; letter-spacing:.2px; }
-  #settingsBtn{ font-size:18px; } /* ボタン大きさはそのまま、歯車だけ大きく */
+  #settingsBtn{ font-size:18px; }
 
   #meta{margin-bottom:12px;color:#666;}
   #weather{font-weight:bold;}
@@ -119,7 +110,7 @@
     display:grid;
     grid-template-columns:repeat(7,1fr);
     gap:6px;
-    margin:10px 0 0; /* topInnerの下paddingに任せて詰める */
+    margin:10px 0 0;
   }
   #weekBar button{
     padding:8px 0;
@@ -149,7 +140,11 @@
     border-radius:10px;
     box-shadow:0 1px 4px rgba(0,0,0,0.06);
     margin-bottom:12px;
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
   }
+  .entry:active{ transform: translateY(1px); }
+
   .time{color:#888;width:60px;display:inline-block;vertical-align:top;}
   .text{display:block;margin-left:60px;}
 
@@ -431,13 +426,13 @@
   }
 </style>
 </head>
+
 <body>
 
 <div id="topSticky">
   <div id="topInner">
     <div id="nav">
       <div id="navDate"></div>
-
       <div id="navRight">
         <button id="toggleBtn" class="iconOnly" type="button" title="表示切替">月</button>
         <button id="settingsBtn" class="iconOnly" type="button" aria-label="設定" title="設定">⚙︎</button>
@@ -506,12 +501,10 @@
 <div id="toast">保存しました</div>
 
 <script>
-
-
+/* =======================
+   Utilities / Storage
+======================= */
 function byId(id){ return document.getElementById(id); }
-
-let viewMode = 'week';
-let currentDate = new Date().toISOString().slice(0,10);
 
 function pad2(n){ return String(n).padStart(2,'0'); }
 function nowHHMM(){
@@ -521,6 +514,7 @@ function nowHHMM(){
 function uid(){
   return "e_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
 }
+function formatYMD(d){ return d.toISOString().slice(0,10); }
 
 function timeToMinutes(t){
   if(!t) return 999999; // 無時間は最後に回す
@@ -531,8 +525,74 @@ function timeToMinutes(t){
   return h*60 + mi;
 }
 
-function formatYMD(d){ return d.toISOString().slice(0,10); }
+function showToast(message){
+  const toast = byId('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1200);
+}
 
+// 保存はこれ1つに統一（失敗時はfalse）
+window.saveDayData = function(dateKey, dayData){
+  try {
+    localStorage.setItem(dateKey, JSON.stringify(dayData));
+    return true;
+  } catch (err) {
+    console.error("saveDayData failed:", err);
+    showToast("保存できなかった（容量かも）");
+    return false;
+  }
+};
+
+function getDayData(dateKey){
+  const dayData = JSON.parse(localStorage.getItem(dateKey) || '{}');
+  dayData.entries = dayData.entries || [];
+
+  // 古いデータ補完（ここでは保存しない）
+  dayData.entries.forEach(e=>{
+    if(!e.id) e.id = uid();
+    if(e.createdAt == null) e.createdAt = Date.now();
+  });
+
+  return dayData;
+}
+
+function sortEntries(dayData){
+  const arr = dayData.entries || [];
+  arr.sort((a,b)=>{
+    const ta = timeToMinutes(a.time);
+    const tb = timeToMinutes(b.time);
+    if (ta !== tb) return ta - tb;
+
+    const ca = a.createdAt ?? 0;
+    const cb = b.createdAt ?? 0;
+    if (ca !== cb) return ca - cb;
+
+    return String(a.id||"").localeCompare(String(b.id||""));
+  });
+}
+
+/* =======================
+   App State
+======================= */
+let viewMode = 'week';
+let currentDate = new Date().toISOString().slice(0,10);
+
+// input/edit
+let timeMode = 'auto';
+let selectedTime = '';
+let timeTicker = null;
+let editingId = null;
+let isSaving = false;
+
+// attachments pending
+let pendingDataUrl = null;
+let pendingMime = '';
+let pendingName = '';
+
+/* =======================
+   Header / Date / Calendar
+======================= */
 function renderNavDate(dateStr){
   const d = new Date(dateStr);
   const dateText = d.toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'});
@@ -548,47 +608,6 @@ function startOfWeek(dateStr){
   return d;
 }
 
-function getDayData(dateKey){
-  const dayData = JSON.parse(localStorage.getItem(dateKey) || '{}');
-  dayData.entries = dayData.entries || [];
-
-  // 既存データ互換：id/createdAt が無いものは補完して "固定" する
-  let changed = false;
-  dayData.entries.forEach(e=>{
-    if(!e.id){ e.id = uid(); changed = true; }
-    if(e.createdAt == null){ e.createdAt = Date.now(); changed = true; }
-  });
-
-  if (changed) saveDayData(dateKey, dayData);
-
-  return dayData;
-}
-
-function sortEntries(dayData){
-  const arr = dayData.entries || [];
-  arr.sort((a,b)=>{
-    const ta = timeToMinutes(a.time);
-    const tb = timeToMinutes(b.time);
-    if (ta !== tb) return ta - tb;
-
-    // 同時刻は作成順で安定化（古い→新しい）
-    const ca = a.createdAt ?? 0;
-    const cb = b.createdAt ?? 0;
-    if (ca !== cb) return ca - cb;
-
-    // 最後の保険：id文字列
-    return String(a.id||"").localeCompare(String(b.id||""));
-  });
-}
-
-function showToast(message){
-  const toast = byId('toast');
-  toast.textContent = message;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 1200);
-}
-
-/* week bar / calendar */
 function renderWeekBar(dateStr){
   const bar = byId('weekBar');
   bar.style.display = (viewMode === 'week') ? 'grid' : 'none';
@@ -654,7 +673,9 @@ function generateCalendar(){
   }
 }
 
-/* render day */
+/* =======================
+   Render Day
+======================= */
 function loadDay(dateStr){
   renderNavDate(dateStr);
 
@@ -696,10 +717,7 @@ function loadDay(dateStr){
         div.appendChild(fileLine);
       }
 
-        div.addEventListener('click', () => {
-  beginEditById(entry.id);
-});
-
+      div.addEventListener('click', () => beginEditById(entry.id));
       entriesDiv.appendChild(div);
     });
   } else {
@@ -707,7 +725,9 @@ function loadDay(dateStr){
   }
 }
 
-/* view switch */
+/* =======================
+   View Switch
+======================= */
 const toggleBtn = byId('toggleBtn');
 const calEl = byId('calendar');
 const weekBarEl = byId('weekBar');
@@ -734,7 +754,9 @@ function showMonth(){
 }
 toggleBtn.onclick = () => (viewMode === 'week') ? showMonth() : showWeek();
 
-/* input bar */
+/* =======================
+   Input Bar
+======================= */
 const inputBar = byId('inputBar');
 const plusBtn  = byId('plusBtn');
 const logInput = byId('logInput');
@@ -755,11 +777,6 @@ const actPhoto = byId('actPhoto');
 const actCamera= byId('actCamera');
 const actFile  = byId('actFile');
 const actCancel= byId('actCancel');
-
-let timeMode = 'auto';
-let selectedTime = '';
-let timeTicker = null;
-let editingId = null; // nullなら新規、文字列なら編集中entryのid
 
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
@@ -836,7 +853,9 @@ logInput.addEventListener('keydown', (e) => {
   }
 });
 
-/* plus sheet */
+/* =======================
+   Plus Sheet
+======================= */
 function openPlusSheet(){
   plusSheet.classList.add('open');
   plusSheet.setAttribute('aria-hidden','false');
@@ -853,11 +872,9 @@ actPhoto.onclick = () => { closePlusSheet(); photoEl.click(); };
 actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
 
-/* attachments */
-let pendingDataUrl = null;
-let pendingMime = '';
-let pendingName = '';
-
+/* =======================
+   Attachments
+======================= */
 function fileToDataURL(file){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
@@ -899,16 +916,15 @@ async function handleAttachment(file){
   });
 });
 
+/* =======================
+   Edit (B)
+======================= */
 function beginEditEntry(entry){
   editingId = entry.id;
 
-  // InputBarを開く
   expandInputBar();
-
-  // テキスト復元
   logInput.value = entry.text || "";
 
-  // 時刻復元
   if (!entry.time) {
     timeMode = 'none';
     selectedTime = '';
@@ -923,12 +939,11 @@ function beginEditEntry(entry){
     showNoTimeBtn();
   }
 
-  // 添付は「そのまま保持」する（置き換えUIは次段階）
+  // 添付保持（写真はDataURLが残る）
   pendingDataUrl = entry.photo || null;
-  pendingMime = entry.photo ? 'image/*' : (entry.fileName ? 'application/*' : '');
   pendingName = entry.fileName || '';
+  pendingMime = entry.photo ? 'image/*' : (entry.fileName ? 'application/*' : '');
 
-  // プレビュー表示
   previewArea.innerHTML = '';
   if (pendingDataUrl && entry.photo) {
     const img = document.createElement('img');
@@ -942,27 +957,21 @@ function beginEditEntry(entry){
     previewArea.appendChild(div);
   }
 
-  // 体験：フォーカス
   setTimeout(()=>logInput.focus(), 0);
-
   showToast('編集モード');
 }
 
 function beginEditById(entryId){
   const dayData = getDayData(currentDate);
   const entry = (dayData.entries || []).find(e => e.id === entryId);
-  if (!entry) {
-    showToast('編集対象が見つからない…');
-    return;
-  }
+  if (!entry) { showToast('編集対象が見つからない…'); return; }
   beginEditEntry(entry);
 }
 
-let isSaving = false;
-
-/* save */
+/* =======================
+   Save
+======================= */
 saveBtn.onclick = () => {
-  // 二重発火ガード（ダブルタップ/二重登録/Enter+click などを吸収）
   if (isSaving) return;
   isSaving = true;
 
@@ -974,7 +983,6 @@ saveBtn.onclick = () => {
     else if (timeMode === 'auto') time = nowHHMM();
     else time = '';
 
-    // 何も無いなら閉じて終わり
     if (!text && !pendingDataUrl) {
       collapseInputBar();
       logInput.blur();
@@ -983,7 +991,6 @@ saveBtn.onclick = () => {
 
     const dayData = getDayData(currentDate);
 
-    // 保存する形（編集でも新規でも共通）
     const isImage = !!pendingDataUrl && String(pendingMime).startsWith('image/');
     const hasFileName = !!pendingName && !isImage;
 
@@ -996,40 +1003,26 @@ saveBtn.onclick = () => {
 
     if (editingId) {
       const idx = dayData.entries.findIndex(e => e.id === editingId);
-
       if (idx >= 0) {
-        // createdAt / id は維持して上書き
-        dayData.entries[idx] = {
-          ...dayData.entries[idx],
-          ...newPayload
-        };
+        dayData.entries[idx] = { ...dayData.entries[idx], ...newPayload };
         showToast('更新しました');
       } else {
-        // 何故か見つからない場合は新規追加（安全策）
-        dayData.entries.push({
-          id: uid(),
-          createdAt: Date.now(),
-          ...newPayload
-        });
+        dayData.entries.push({ id: uid(), createdAt: Date.now(), ...newPayload });
         showToast('追加しました');
       }
     } else {
-      // 新規追加
-      dayData.entries.push({
-        id: uid(),
-        createdAt: Date.now(),
-        ...newPayload
-      });
+      dayData.entries.push({ id: uid(), createdAt: Date.now(), ...newPayload });
       showToast('保存しました');
     }
 
     sortEntries(dayData);
-    saveDayData(currentDate, dayData);
+
+    const ok = window.saveDayData(currentDate, dayData);
+    if (!ok) return; // 失敗時は入力を残す
+
     loadDay(currentDate);
 
-    console.log("editingId", editingId, "found", dayData.entries.some(e=>e.id===editingId));
-
-    // ---- リセット（次入力を気持ちよく） ----
+    // reset
     editingId = null;
 
     logInput.value = '';
@@ -1048,12 +1041,13 @@ saveBtn.onclick = () => {
     logInput.blur();
 
   } finally {
-    // 連打や二重イベントを吸収（少し遅らせて解除）
     setTimeout(() => { isSaving = false; }, 160);
   }
 };
 
-/* settings modal */
+/* =======================
+   Settings Modal
+======================= */
 const settingsBtn = byId('settingsBtn');
 const settingsModal = byId('settingsModal');
 const closeSettings = byId('closeSettings');
@@ -1116,15 +1110,13 @@ byId('exportLogday').onclick = () => {
   input.addEventListener("input", handler);
 })();
 
-/* top shadow: scrollで濃く */
+/* top shadow */
 (() => {
   const topSticky = byId('topSticky');
-  const TH = 6; // ちょい動いたら濃く（好みで）
-  const onScroll = () => {
-    topSticky.classList.toggle('isScrolled', window.scrollY > TH);
-  };
+  const TH = 6;
+  const onScroll = () => topSticky.classList.toggle('isScrolled', window.scrollY > TH);
   window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll(); // 初期反映
+  onScroll();
 })();
 
 /* init */
