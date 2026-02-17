@@ -845,8 +845,20 @@ document.addEventListener('pointerdown', (e) => {
   editingId = null;
 });
 
+let isComposing = false;
+
+logInput.addEventListener('compositionstart', () => { isComposing = true; });
+logInput.addEventListener('compositionend',   () => { isComposing = false; });
+
 logInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  // IME変換中のEnterは「確定」なので保存しない
+  if (isComposing || e.isComposing || e.keyCode === 229) return;
+
+  // Shift+Enter は改行
+  if (e.key === 'Enter' && e.shiftKey) return;
+
+  // Enter で保存
+  if (e.key === 'Enter') {
     e.preventDefault();
     saveBtn.click();
     logInput.blur();
