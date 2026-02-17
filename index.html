@@ -340,7 +340,14 @@
 
 /* Content をスワイプに追従させる時の見た目 */
 .entryContent{
-  touch-action: pan-y;
+  position: relative;
+  background:#fff;
+  padding:10px 12px;
+  transform: translateX(0);
+  will-change: transform;
+
+  /* ここ変更：バネっぽい */
+  transition: transform .32s cubic-bezier(.22,1.35,.3,1);
 }
 
 /* 削除ボタンの中身（アイコン+文字） */
@@ -807,11 +814,27 @@ let x = base + dx;
 
 // clamp：0〜SWIPE_FULL_DELETE まで許可（←ここがポイント）
 x = Math.min(0, x);
-x = Math.max(SWIPE_FULL_DELETE, x);
+
+// 左に行き過ぎた分は “減衰” させてぼよーん感（ゴム感）
+if (x < SWIPE_FULL_DELETE) {
+  const over = x - SWIPE_FULL_DELETE; // overはマイナス
+  x = SWIPE_FULL_DELETE + over * 0.35; // 0.25〜0.45で調整
+  x = Math.max(SWIPE_FULL_DELETE - SWIPE_OVERSHOOT, x);
+}
+const SWIPE_OVERSHOOT = 26; // 行き過ぎ許容量（好みで 18〜34）
 
 swipeLock.currentX = x;
-contentEl.style.transform = `translateX(${x}px)`;
-  }, {passive:true});
+// まず少し行き過ぎ → すぐ戻してから削除（ぼよーん演出）
+const kick = SWIPE_FULL_DELETE - 14; // 14pxだけ深く（好みで）
+contentEl.style.transform = `translateX(${kick}px)`;
+
+setTimeout(() => {
+  contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
+  deleteEntryById(wrapEl.dataset.id, wrapEl);
+}, 60);
+
+swipeLock.active = false;
+return;
 
   const finish = () => {
     const SWIPE_FULL_DELETE = -170; // これ超えたら即削除（好みで調整）
