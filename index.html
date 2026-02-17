@@ -340,13 +340,6 @@
 
 /* Content をスワイプに追従させる時の見た目 */
 .entryContent{
-  position: relative;
-  background:#fff;
-  padding:10px 12px;
-  transform: translateX(0);
-  will-change: transform;
-
-  /* ここ変更：バネっぽい */
   transition: transform .32s cubic-bezier(.22,1.35,.3,1);
 }
 
@@ -753,7 +746,8 @@ function generateCalendar(){
 
 const SWIPE_OPEN_X = -84;
 const SWIPE_THRESHOLD = -42;
-const SWIPE_FULL_DELETE = -170; // ここまで行ったら即削除
+const SWIPE_FULL_DELETE = -170;
+const SWIPE_OVERSHOOT = 26;
 let openSwipeId = null;        // 今開いてるentryのid
 let swipeLock = { active:false, moved:false, id:null, startX:0, startY:0, currentX:0 };
 
@@ -770,7 +764,6 @@ function closeOtherSwipes(keepId){
 }
 
 function attachSwipeHandlers(wrapEl, contentEl){
-  // Pointer events（iOS/Chrome対応）
   wrapEl.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
@@ -781,12 +774,11 @@ function attachSwipeHandlers(wrapEl, contentEl){
     swipeLock.startY = e.clientY;
     swipeLock.currentX = 0;
 
-    // ほかが開いてたら閉じる（自分以外）
     closeOtherSwipes(wrapEl.dataset.id);
 
     contentEl.style.transition = 'none';
     wrapEl.setPointerCapture?.(e.pointerId);
-  }, {passive:true});
+  }, { passive: true });
 
   wrapEl.addEventListener('pointermove', (e) => {
     if (!swipeLock.active || swipeLock.id !== wrapEl.dataset.id) return;
@@ -794,7 +786,6 @@ function attachSwipeHandlers(wrapEl, contentEl){
     const dx = e.clientX - swipeLock.startX;
     const dy = e.clientY - swipeLock.startY;
 
-    // 縦スクロール優先（縦が強いなら何もしない）
     if (!swipeLock.moved && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 6) {
       swipeLock.active = false;
       contentEl.style.transition = '';
@@ -803,79 +794,66 @@ function attachSwipeHandlers(wrapEl, contentEl){
 
     if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
 
-    // 左スワイプのみ（dxはマイナス）
     swipeLock.moved = true;
 
-    // ベース位置（閉→0 / 開→SWIPE_OPEN_X）
-const base = wrapEl.classList.contains('open') ? SWIPE_OPEN_X : 0;
+    const base = wrapEl.classList.contains('open') ? SWIPE_OPEN_X : 0;
+    let x = base + dx;
 
-// 左へスワイプ（dxは負）で動かす。右は0まで。
-let x = base + dx;
+    x = Math.min(0, x);
 
-// clamp：0〜SWIPE_FULL_DELETE まで許可（←ここがポイント）
-x = Math.min(0, x);
+    if (x < SWIPE_FULL_DELETE) {
+      const over = x - SWIPE_FULL_DELETE;
+      x = SWIPE_FULL_DELETE + over * 0.35;
+      x = Math.max(SWIPE_FULL_DELETE - SWIPE_OVERSHOOT, x);
+    }
 
-// 左に行き過ぎた分は “減衰” させてぼよーん感（ゴム感）
-if (x < SWIPE_FULL_DELETE) {
-  const over = x - SWIPE_FULL_DELETE; // overはマイナス
-  x = SWIPE_FULL_DELETE + over * 0.35; // 0.25〜0.45で調整
-  x = Math.max(SWIPE_FULL_DELETE - SWIPE_OVERSHOOT, x);
-}
-const SWIPE_OVERSHOOT = 26; // 行き過ぎ許容量（好みで 18〜34）
-
-swipeLock.currentX = x;
-// まず少し行き過ぎ → すぐ戻してから削除（ぼよーん演出）
-const kick = SWIPE_FULL_DELETE - 14; // 14pxだけ深く（好みで）
-contentEl.style.transform = `translateX(${kick}px)`;
-
-setTimeout(() => {
-  contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
-  deleteEntryById(wrapEl.dataset.id, wrapEl);
-}, 60);
-
-swipeLock.active = false;
-return;
+    swipeLock.currentX = x;
+    contentEl.style.transform = `translateX(${x}px)`;
+  }, { passive: true });
 
   const finish = () => {
-    const SWIPE_FULL_DELETE = -170; // これ超えたら即削除（好みで調整）
     if (!swipeLock.active || swipeLock.id !== wrapEl.dataset.id) return;
 
     contentEl.style.transition = '';
     const x = swipeLock.currentX;
 
-    // 動いてない = タップ（編集に渡す）
     if (!swipeLock.moved) {
-      // 開いてる状態でタップしたら閉じる
       if (wrapEl.classList.contains('open')) {
         wrapEl.classList.remove('open');
         openSwipeId = null;
       }
       swipeLock.active = false;
+      contentEl.style.transform = '';
       return;
     }
 
-    // ① フルスワイプで即削除
-if (x <= SWIPE_FULL_DELETE) {
-  contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
-  deleteEntryById(wrapEl.dataset.id, wrapEl);
-  swipeLock.active = false;
-  return;
-}
-if (x <= SWIPE_THRESHOLD) {
-  wrapEl.classList.add('open');
-  openSwipeId = wrapEl.dataset.id;
-  contentEl.style.transform = '';
-} else {
-  wrapEl.classList.remove('open');
-  openSwipeId = null;
-  contentEl.style.transform = '';
-}
+    if (x <= SWIPE_FULL_DELETE) {
+      const kick = SWIPE_FULL_DELETE - 14;
+      contentEl.style.transform = `translateX(${kick}px)`;
+      setTimeout(() => {
+        contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
+        deleteEntryById(wrapEl.dataset.id, wrapEl);
+      }, 60);
+
+      swipeLock.active = false;
+      return;
+    }
+
+    if (x <= SWIPE_THRESHOLD) {
+      wrapEl.classList.add('open');
+      openSwipeId = wrapEl.dataset.id;
+      contentEl.style.transform = '';
+    } else {
+      wrapEl.classList.remove('open');
+      openSwipeId = null;
+      contentEl.style.transform = '';
+    }
 
     swipeLock.active = false;
   };
 
-  wrapEl.addEventListener('pointerup', finish, {passive:true});
-  wrapEl.addEventListener('pointercancel', finish, {passive:true});
+  wrapEl.addEventListener('pointerup', finish, { passive: true });
+  wrapEl.addEventListener('pointercancel', finish, { passive: true });
 }
 
 function deleteEntryById(entryId, wrapEl){
