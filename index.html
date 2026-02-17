@@ -828,7 +828,7 @@ function attachSwipeHandlers(wrapEl, contentEl){
     }
 
     if (x <= SWIPE_FULL_DELETE) {
-      const kick = SWIPE_FULL_DELETE - 14;
+      const kick = SWIPE_FULL_DELETE - 22;
       contentEl.style.transform = `translateX(${kick}px)`;
       setTimeout(() => {
         contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
