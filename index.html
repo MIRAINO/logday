@@ -1163,18 +1163,16 @@ function beginEditEntry(entry){
   logInput.value = entry.text || "";
 
   if (!entry.time) {
-    timeMode = 'auto';
-    selectedTime = '';
-    logTimeEl.value = '';
-    refreshTimeHint();
-    
-  } else {
-    timeMode = 'set';
-    selectedTime = entry.time;
-    logTimeEl.value = entry.time;
-    refreshTimeHint();
-    
-  }
+  timeMode = 'auto';
+  selectedTime = '';
+  logTimeEl.value = '';
+  refreshTimeHint();
+} else {
+  timeMode = 'set';
+  selectedTime = entry.time;
+  logTimeEl.value = entry.time;
+  refreshTimeHint();
+}
 
   // 添付保持（写真はDataURLが残る）
   pendingDataUrl = entry.photo || null;
@@ -1274,7 +1272,7 @@ saveBtn.onclick = () => {
     selectedTime = '';
     logTimeEl.value = '';
     refreshTimeHint();
-    hideNoTimeBtn();
+    
 
     collapseInputBar();
     logInput.blur();
