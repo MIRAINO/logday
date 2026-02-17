@@ -328,6 +328,48 @@
     opacity:0;
   }
 
+  /* ===== Swipe to delete ===== */
+.entrySwipe{
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+  background:#fff;
+  touch-action: pan-y; /* 縦スクロール優先 */
+}
+
+.entryActions{
+  position:absolute;
+  top:0; right:0; bottom:0;
+  display:flex;
+  align-items:stretch;
+  justify-content:flex-end;
+  padding:0;
+}
+
+.entryDeleteBtn{
+  width: 84px;
+  border:none;
+  background:#ff3b30;
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.entryContent{
+  position: relative;
+  background:#fff;
+  padding:10px 12px;
+  transform: translateX(0);
+  will-change: transform;
+  transition: transform .18s ease;
+}
+
+.entrySwipe.open .entryContent{
+  transform: translateX(-84px); /* delete幅と同じ */
+}
+
   /* =======================
      Plus Sheet
   ======================= */
@@ -673,6 +715,115 @@ function generateCalendar(){
   }
 }
 
+const SWIPE_OPEN_X = -84;      // 削除ボタン幅（CSSと合わせる）
+const SWIPE_THRESHOLD = -42;   // ここまで行ったら開く
+let openSwipeId = null;        // 今開いてるentryのid
+let swipeLock = { active:false, moved:false, id:null, startX:0, startY:0, currentX:0 };
+
+function closeAllSwipes(){
+  document.querySelectorAll('.entrySwipe.open').forEach(el => el.classList.remove('open'));
+  openSwipeId = null;
+}
+
+function closeOtherSwipes(keepId){
+  document.querySelectorAll('.entrySwipe.open').forEach(el => {
+    if (el.dataset.id !== keepId) el.classList.remove('open');
+  });
+  openSwipeId = keepId;
+}
+
+function attachSwipeHandlers(wrapEl, contentEl){
+  // Pointer events（iOS/Chrome対応）
+  wrapEl.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+    swipeLock.active = true;
+    swipeLock.moved = false;
+    swipeLock.id = wrapEl.dataset.id;
+    swipeLock.startX = e.clientX;
+    swipeLock.startY = e.clientY;
+    swipeLock.currentX = 0;
+
+    // ほかが開いてたら閉じる（自分以外）
+    closeOtherSwipes(wrapEl.dataset.id);
+
+    contentEl.style.transition = 'none';
+    wrapEl.setPointerCapture?.(e.pointerId);
+  }, {passive:true});
+
+  wrapEl.addEventListener('pointermove', (e) => {
+    if (!swipeLock.active || swipeLock.id !== wrapEl.dataset.id) return;
+
+    const dx = e.clientX - swipeLock.startX;
+    const dy = e.clientY - swipeLock.startY;
+
+    // 縦スクロール優先（縦が強いなら何もしない）
+    if (!swipeLock.moved && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 6) {
+      swipeLock.active = false;
+      contentEl.style.transition = '';
+      return;
+    }
+
+    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+
+    // 左スワイプのみ（dxはマイナス）
+    swipeLock.moved = true;
+
+    let x = dx;
+    // 右方向は閉じ方向にだけ少し許可
+    if (wrapEl.classList.contains('open')) {
+      // open時は dx が 0 から右へ戻す方向で閉じる
+      x = SWIPE_OPEN_X + dx;
+    }
+
+    // clamp
+    x = Math.min(0, x);
+    x = Math.max(SWIPE_OPEN_X, x);
+
+    swipeLock.currentX = x;
+    contentEl.style.transform = `translateX(${x}px)`;
+  }, {passive:true});
+
+  const finish = () => {
+    if (!swipeLock.active || swipeLock.id !== wrapEl.dataset.id) return;
+
+    contentEl.style.transition = '';
+    const x = swipeLock.currentX;
+
+    // 動いてない = タップ（編集に渡す）
+    if (!swipeLock.moved) {
+      // 開いてる状態でタップしたら閉じる
+      if (wrapEl.classList.contains('open')) {
+        wrapEl.classList.remove('open');
+        openSwipeId = null;
+      }
+      swipeLock.active = false;
+      return;
+    }
+
+    // 閾値で open/close 判定
+    if (x <= SWIPE_THRESHOLD) {
+      wrapEl.classList.add('open');
+      openSwipeId = wrapEl.dataset.id;
+      contentEl.style.transform = '';
+    } else {
+      wrapEl.classList.remove('open');
+      openSwipeId = null;
+      contentEl.style.transform = '';
+    }
+
+    swipeLock.active = false;
+  };
+
+  wrapEl.addEventListener('pointerup', finish, {passive:true});
+  wrapEl.addEventListener('pointercancel', finish, {passive:true});
+}
+
+// 画面タップで開いてるスワイプを閉じる（入力バー以外）
+document.addEventListener('pointerdown', (e) => {
+  if (openSwipeId && !e.target.closest('.entrySwipe')) closeAllSwipes();
+}, {passive:true});
+
 /* =======================
    Render Day
 ======================= */
@@ -687,39 +838,88 @@ function loadDay(dateStr){
 
   if(saved.entries && saved.entries.length){
     saved.entries.forEach(entry=>{
-      const div = document.createElement('div');
-      div.className = 'entry';
-      div.dataset.id = entry.id || '';
+  const wrap = document.createElement('div');
+  wrap.className = 'entrySwipe';
+  wrap.dataset.id = entry.id || '';
 
-      const time = document.createElement('span');
-      time.className = 'time';
-      time.textContent = (entry.time && entry.time.trim()) ? entry.time : '•';
+  const actions = document.createElement('div');
+  actions.className = 'entryActions';
 
-      const text = document.createElement('span');
-      text.className = 'text';
-      text.textContent = entry.text || '';
+  const delBtn = document.createElement('button');
+  delBtn.className = 'entryDeleteBtn';
+  delBtn.type = 'button';
+  delBtn.textContent = '削除';
 
-      div.appendChild(time);
-      div.appendChild(text);
+  delBtn.onclick = (ev) => {
+    ev.stopPropagation();
 
-      if (entry.photo) {
-        const img = document.createElement('img');
-        img.className = 'entryPhoto';
-        img.src = entry.photo;
-        img.alt = 'photo';
-        div.appendChild(img);
-      }
+    const dayData = getDayData(currentDate);
+    const idx = dayData.entries.findIndex(e => e.id === entry.id);
+    if (idx < 0) return;
 
-      if (entry.fileName) {
-        const fileLine = document.createElement('div');
-        fileLine.className = 'fileLine';
-        fileLine.textContent = `📎 ${entry.fileName}`;
-        div.appendChild(fileLine);
-      }
+    // 物理削除
+    dayData.entries.splice(idx, 1);
+    sortEntries(dayData);
 
-      div.addEventListener('click', () => beginEditById(entry.id));
-      entriesDiv.appendChild(div);
-    });
+    const ok = window.saveDayData(currentDate, dayData);
+    if (!ok) return;
+
+    showToast('削除しました');
+    loadDay(currentDate);
+  };
+
+  actions.appendChild(delBtn);
+
+  const content = document.createElement('div');
+  content.className = 'entryContent';
+
+  const time = document.createElement('span');
+  time.className = 'time';
+  time.textContent = (entry.time && entry.time.trim()) ? entry.time : '•';
+
+  const text = document.createElement('span');
+  text.className = 'text';
+  text.textContent = entry.text || '';
+
+  content.appendChild(time);
+  content.appendChild(text);
+
+  if (entry.photo) {
+    const img = document.createElement('img');
+    img.className = 'entryPhoto';
+    img.src = entry.photo;
+    img.alt = 'photo';
+    content.appendChild(img);
+  }
+
+  if (entry.fileName) {
+    const fileLine = document.createElement('div');
+    fileLine.className = 'fileLine';
+    fileLine.textContent = `📎 ${entry.fileName}`;
+    content.appendChild(fileLine);
+  }
+
+  // スワイプ設定
+  attachSwipeHandlers(wrap, content);
+
+  // タップ編集（スワイプ中の誤タップを避ける）
+  content.addEventListener('click', (ev) => {
+    // 開いてる時はタップ=閉じる優先（編集しない）
+    if (wrap.classList.contains('open')) {
+      wrap.classList.remove('open');
+      openSwipeId = null;
+      return;
+    }
+    // スワイプ移動直後は編集しない
+    if (swipeLock.moved) return;
+
+    beginEditById(entry.id);
+  });
+
+  wrap.appendChild(actions);
+  wrap.appendChild(content);
+  entriesDiv.appendChild(wrap);
+});
   } else {
     entriesDiv.innerHTML = '<div class="emptyState">この日はまだ記録がありません</div>';
   }
@@ -979,6 +1179,8 @@ function beginEditById(entryId){
   if (!entry) { showToast('編集対象が見つからない…'); return; }
   beginEditEntry(entry);
 }
+
+
 
 /* =======================
    Save
