@@ -174,40 +174,70 @@
   }
 
   /* =======================
-     Input Bar (bottom)
-  ======================= */
-  /* InputBar を2段構成に */
+   Input Bar (bottom)
+======================= */
 #inputBar{
   position:fixed;
   left:0; right:0; bottom:0;
   background:#fff;
   border-top:1px solid #ddd;
-  padding:12px;
+  padding:10px 12px;
+
   display:flex;
   flex-wrap:wrap;
-  gap:10px;
-  align-items:flex-end;
+  align-items:center;
+  gap:8px;
 
   z-index:9999;
   box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
-  max-height:360px;
+  max-height:320px;
 }
 
-  #inputBar.expanded{
-    margin: 0 12px 12px;
-    border-radius:16px;
-    border-top:none;
-    border:1px solid rgba(0,0,0,0.10);
-    padding:12px;
-    box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
-    transform: translateY(-2px);
-    background: rgba(255,255,255,0.98);
-    backdrop-filter: blur(10px);
-  }
+/* ▼ 通常時：1段横並び */
+#plusBtn{ order: 1; }
+#timeHintWrap{ order: 2; }
+#logInput{
+  order: 3;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  resize: none;
+}
+#saveBtn{
+  order: 4;
+  display:inline-flex;           /* ← 通常時も表示したいので常に表示 */
+  align-items:center;
+  justify-content:center;
+}
 
-  /* 下段：左寄せグループ */
-#plusBtn{ order: 2; }
-#timeHintWrap{ order: 3; }
+/* プレビューは下段 */
+#previewArea{ order: 10; flex: 0 0 100%; width:100%; }
+
+/* ▼ 展開時：入力欄を上段100%＋下段にボタン列 */
+#inputBar.expanded{
+  margin: 0 12px 12px;
+  border-radius:16px;
+  border-top:none;
+  border:1px solid rgba(0,0,0,0.10);
+  padding:12px;
+  box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.98);
+  backdrop-filter: blur(10px);
+}
+
+#inputBar.expanded #logInput{
+  flex: 0 0 100%;
+  order: 1;
+  height: 120px;
+  max-height: 180px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
+#inputBar.expanded #plusBtn{ order: 2; }
+#inputBar.expanded #timeHintWrap{ order: 3; }
+#inputBar.expanded #saveBtn{ order: 4; }
 
 /* 保存は右端へ */
 #saveBtn{
@@ -1080,18 +1110,26 @@ document.addEventListener('pointerdown', (e) => {
 
 /* IME Enter誤爆防止（Mac Chrome 日本語入力） */
 let isComposing = false;
+
 logInput.addEventListener('compositionstart', () => { isComposing = true; });
 logInput.addEventListener('compositionend',   () => { isComposing = false; });
 
+// Enterは「改行」：何もしない（デフォルト挙動に任せる）
 logInput.addEventListener('keydown', (e) => {
-  if (isComposing || e.isComposing || e.keyCode === 229) return; // 変換確定Enterは保存しない
-  if (e.key === 'Enter' && e.shiftKey) return; // Shift+Enter = 改行
+  // IME変換中は触らない
+  if (isComposing || e.isComposing || e.keyCode === 229) return;
 
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    saveBtn.click();
-    logInput.blur();
-  }
+  // ここでEnter保存をしない！
+  // つまり preventDefault もしない
+});
+
+// iOSの「☑️（完了）」は基本 blur を発火させるので、blurで折りたたむ
+logInput.addEventListener('blur', () => {
+  // 少し待ってから（保存ボタンタップ等の競合回避）
+  setTimeout(() => {
+    // テキストは消さない。見た目だけ戻す。
+    collapseInputBar();
+  }, 80);
 });
 
 /* =======================
