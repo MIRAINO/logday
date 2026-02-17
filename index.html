@@ -329,6 +329,35 @@
   }
 
   /* ===== Swipe to delete ===== */
+
+  /* 削除アニメ */
+.entrySwipe.removing{
+  animation: entryFadeOut .18s ease forwards;
+}
+@keyframes entryFadeOut{
+  to { opacity:0; transform: scale(0.98); }
+}
+
+/* Content をスワイプに追従させる時の見た目 */
+.entryContent{
+  touch-action: pan-y;
+}
+
+/* 削除ボタンの中身（アイコン+文字） */
+.entryDeleteBtn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  font-size:12px;
+}
+.entryDeleteBtn .icon{
+  font-size:18px;
+  line-height:1;
+}
+
+
 .entrySwipe{
   position: relative;
   overflow: hidden;
@@ -785,6 +814,7 @@ function attachSwipeHandlers(wrapEl, contentEl){
   }, {passive:true});
 
   const finish = () => {
+    const SWIPE_FULL_DELETE = -170; // これ超えたら即削除（好みで調整）
     if (!swipeLock.active || swipeLock.id !== wrapEl.dataset.id) return;
 
     contentEl.style.transition = '';
@@ -801,22 +831,57 @@ function attachSwipeHandlers(wrapEl, contentEl){
       return;
     }
 
-    // 閾値で open/close 判定
-    if (x <= SWIPE_THRESHOLD) {
-      wrapEl.classList.add('open');
-      openSwipeId = wrapEl.dataset.id;
-      contentEl.style.transform = '';
-    } else {
-      wrapEl.classList.remove('open');
-      openSwipeId = null;
-      contentEl.style.transform = '';
-    }
+    // ① フルスワイプで即削除
+if (x <= SWIPE_FULL_DELETE) {
+  // 見た目：左へ飛ばす
+  contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
+  // 即削除
+  deleteEntryById(wrapEl.dataset.id, wrapEl);
+  swipeLock.active = false;
+  return;
+}
+
+// ② 通常の open/close
+if (x <= SWIPE_THRESHOLD) {
+  wrapEl.classList.add('open');
+  openSwipeId = wrapEl.dataset.id;
+  contentEl.style.transform = '';
+} else {
+  wrapEl.classList.remove('open');
+  openSwipeId = null;
+  contentEl.style.transform = '';
+}
 
     swipeLock.active = false;
   };
 
   wrapEl.addEventListener('pointerup', finish, {passive:true});
   wrapEl.addEventListener('pointercancel', finish, {passive:true});
+}
+
+function deleteEntryById(entryId, wrapEl){
+  const dayData = getDayData(currentDate);
+  const idx = dayData.entries.findIndex(e => e.id === entryId);
+  if (idx < 0) return;
+
+  // UI先行：消えるアニメ
+  if (wrapEl) wrapEl.classList.add('removing');
+
+  // ほんの少し待ってから実削除（アニメが見える）
+  setTimeout(() => {
+    dayData.entries.splice(idx, 1);
+    sortEntries(dayData);
+
+    const ok = window.saveDayData(currentDate, dayData);
+    if (!ok) {
+      // 保存失敗なら見た目を戻す（最小）
+      if (wrapEl) wrapEl.classList.remove('removing');
+      return;
+    }
+
+    showToast('削除しました');
+    loadDay(currentDate);
+  }, 120);
 }
 
 // 画面タップで開いてるスワイプを閉じる（入力バー以外）
@@ -848,25 +913,12 @@ function loadDay(dateStr){
   const delBtn = document.createElement('button');
   delBtn.className = 'entryDeleteBtn';
   delBtn.type = 'button';
-  delBtn.textContent = '削除';
+  delBtn.innerHTML = `<span class="icon">🗑️</span>`;
 
   delBtn.onclick = (ev) => {
-    ev.stopPropagation();
-
-    const dayData = getDayData(currentDate);
-    const idx = dayData.entries.findIndex(e => e.id === entry.id);
-    if (idx < 0) return;
-
-    // 物理削除
-    dayData.entries.splice(idx, 1);
-    sortEntries(dayData);
-
-    const ok = window.saveDayData(currentDate, dayData);
-    if (!ok) return;
-
-    showToast('削除しました');
-    loadDay(currentDate);
-  };
+  ev.stopPropagation();
+  deleteEntryById(entry.id, wrap);
+};
 
   actions.appendChild(delBtn);
 
