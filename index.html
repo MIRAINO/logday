@@ -693,6 +693,10 @@ function loadDay(dateStr){
         div.appendChild(fileLine);
       }
 
+        div.addEventListener('click', () => {
+        beginEditEntry(entry);
+      });
+
       entriesDiv.appendChild(div);
     });
   } else {
@@ -752,6 +756,7 @@ const actCancel= byId('actCancel');
 let timeMode = 'auto';
 let selectedTime = '';
 let timeTicker = null;
+let editingId = null; // nullなら新規、文字列なら編集中entryのid
 
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
@@ -817,6 +822,7 @@ document.addEventListener('pointerdown', (e) => {
   if (inputBar.contains(e.target)) return;
   logInput.blur();
   collapseInputBar();
+  editingId = null;
 });
 
 logInput.addEventListener('keydown', (e) => {
@@ -890,51 +896,146 @@ async function handleAttachment(file){
   });
 });
 
-/* save */
-saveBtn.onclick = () => {
-  const text = logInput.value.trim();
+function beginEditEntry(entry){
+  editingId = entry.id;
 
-  let time = '';
-  if (timeMode === 'set') time = selectedTime;
-  else if (timeMode === 'auto') time = nowHHMM();
-  else time = '';
+  // InputBarを開く
+  expandInputBar();
 
-  if(!text && !pendingDataUrl){
-    collapseInputBar();
-    logInput.blur();
-    return;
+  // テキスト復元
+  logInput.value = entry.text || "";
+
+  // 時刻復元
+  if (!entry.time) {
+    timeMode = 'none';
+    selectedTime = '';
+    logTimeEl.value = '';
+    refreshTimeHint();
+    hideNoTimeBtn();
+  } else {
+    timeMode = 'set';
+    selectedTime = entry.time;
+    logTimeEl.value = entry.time;
+    refreshTimeHint();
+    showNoTimeBtn();
   }
 
-  const dayData = getDayData(currentDate);
-  
-    dayData.entries.push({
-    id: uid(),
-    createdAt: Date.now(),
-    time,
-    text: text || (pendingMime.startsWith('image/') ? '📷 写真' : `📎 ${pendingName || '添付'}`),
-    photo: pendingMime.startsWith('image/') ? pendingDataUrl : null,
-    fileName: pendingMime.startsWith('image/') ? null : pendingName
-  });
+  // 添付は「そのまま保持」する（置き換えUIは次段階）
+  pendingDataUrl = entry.photo || null;
+  pendingMime = entry.photo ? 'image/*' : (entry.fileName ? 'application/*' : '');
+  pendingName = entry.fileName || '';
 
-  sortEntries(dayData);
-  saveDayData(currentDate, dayData);
-  loadDay(currentDate);
-
-  logInput.value = '';
+  // プレビュー表示
   previewArea.innerHTML = '';
-  pendingDataUrl = null;
-  pendingMime = '';
-  pendingName = '';
+  if (pendingDataUrl && entry.photo) {
+    const img = document.createElement('img');
+    img.src = pendingDataUrl;
+    img.alt = 'attachment';
+    previewArea.appendChild(img);
+  } else if (pendingName) {
+    const div = document.createElement('div');
+    div.className = 'filePreview';
+    div.textContent = `📎 ${pendingName}`;
+    previewArea.appendChild(div);
+  }
 
-  timeMode = 'auto';
-  selectedTime = '';
-  logTimeEl.value = '';
-  refreshTimeHint();
-  hideNoTimeBtn();
+  // 体験：フォーカス
+  setTimeout(()=>logInput.focus(), 0);
 
-  collapseInputBar();
-  logInput.blur();
-  showToast('保存しました');
+  showToast('編集モード');
+}
+
+let isSaving = false;
+
+/* save */
+saveBtn.onclick = () => {
+  // 二重発火ガード（ダブルタップ/二重登録/Enter+click などを吸収）
+  if (isSaving) return;
+  isSaving = true;
+
+  try {
+    const text = logInput.value.trim();
+
+    let time = '';
+    if (timeMode === 'set') time = selectedTime;
+    else if (timeMode === 'auto') time = nowHHMM();
+    else time = '';
+
+    // 何も無いなら閉じて終わり
+    if (!text && !pendingDataUrl) {
+      collapseInputBar();
+      logInput.blur();
+      return;
+    }
+
+    const dayData = getDayData(currentDate);
+
+    // 保存する形（編集でも新規でも共通）
+    const isImage = !!pendingDataUrl && String(pendingMime).startsWith('image/');
+    const hasFileName = !!pendingName && !isImage;
+
+    const newPayload = {
+      time,
+      text: text || (isImage ? '📷 写真' : (hasFileName ? `📎 ${pendingName}` : '')),
+      photo: isImage ? pendingDataUrl : null,
+      fileName: hasFileName ? pendingName : null
+    };
+
+    if (editingId) {
+      const idx = dayData.entries.findIndex(e => e.id === editingId);
+
+      if (idx >= 0) {
+        // createdAt / id は維持して上書き
+        dayData.entries[idx] = {
+          ...dayData.entries[idx],
+          ...newPayload
+        };
+        showToast('更新しました');
+      } else {
+        // 何故か見つからない場合は新規追加（安全策）
+        dayData.entries.push({
+          id: uid(),
+          createdAt: Date.now(),
+          ...newPayload
+        });
+        showToast('追加しました');
+      }
+    } else {
+      // 新規追加
+      dayData.entries.push({
+        id: uid(),
+        createdAt: Date.now(),
+        ...newPayload
+      });
+      showToast('保存しました');
+    }
+
+    sortEntries(dayData);
+    saveDayData(currentDate, dayData);
+    loadDay(currentDate);
+
+    // ---- リセット（次入力を気持ちよく） ----
+    editingId = null;
+
+    logInput.value = '';
+    previewArea.innerHTML = '';
+    pendingDataUrl = null;
+    pendingMime = '';
+    pendingName = '';
+
+    timeMode = 'auto';
+    selectedTime = '';
+    logTimeEl.value = '';
+    refreshTimeHint();
+    hideNoTimeBtn();
+
+    collapseInputBar();
+    logInput.blur();
+
+  } finally {
+    // 連打や二重イベントを吸収（少し遅らせて解除）
+    setTimeout(() => { isSaving = false; }, 160);
+  }
 };
 
 /* settings modal */
