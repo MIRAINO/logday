@@ -554,7 +554,7 @@
 
   <div id="timeHintWrap" title="時間">
     <div id="timeHint" class="isAuto"></div>
-    <input id="logTime" type="time" class="timeOverlay">
+    <input id="logTime" type="time" class="timeOverlay" step="600">
   </div>
 
   
@@ -599,6 +599,7 @@
 <div id="toast">保存しました</div>
 
 <script>
+
 /* =======================
    Utilities / Storage
 ======================= */
@@ -685,6 +686,30 @@ function parseYMD(str){
   return new Date(y, m-1, d); // ←ローカル日付として生成
 }
 
+
+
+function roundTimeToStep(timeStr, stepMin){
+  const m = String(timeStr || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return '';
+
+  let h = parseInt(m[1], 10);
+  let mi = parseInt(m[2], 10);
+
+  // 分→stepで丸め（四捨五入）
+  const rounded = Math.round(mi / stepMin) * stepMin;
+
+  if (rounded === 60) {
+    mi = 0;
+    h = (h + 1) % 24;
+  } else {
+    mi = rounded;
+  }
+
+  return `${pad2(h)}:${pad2(mi)}`;
+}
+
+
+
 /* =======================
    App State
 ======================= */
@@ -699,6 +724,8 @@ let tempTime = ''; // ピッカー操作中のプレビュー用
 let timeTicker = null;
 let editingId = null;
 let isSaving = false;
+
+const TIME_STEP_MIN = 10; // ← ここ！
 
 // attachments pending
 let pendingDataUrl = null;
@@ -1144,19 +1171,25 @@ logTimeEl.addEventListener('input', () => {
 
 /* ピッカーを閉じたタイミングで確定（iOSはblurが安定） */
 logTimeEl.addEventListener('blur', () => {
-  selectedTime = logTimeEl.value || '';
+  const raw = logTimeEl.value || '';
+  const rounded = raw ? roundTimeToStep(raw, TIME_STEP_MIN) : '';
+
+  logTimeEl.value = rounded;      // ピッカー値を丸め後に更新
+  selectedTime = rounded;
   timeMode = selectedTime ? 'set' : 'auto';
   tempTime = '';
 
   refreshTimeHint();
-
-  // 時計を触ったら入力しやすい形にはする（でもフォーカスは奪わない）
   expandInputBar();
 }, { passive:true });
 
 /* 念のため：changeでも確定（端末差） */
 logTimeEl.addEventListener('change', () => {
-  selectedTime = logTimeEl.value || '';
+  const raw = logTimeEl.value || '';
+  const rounded = raw ? roundTimeToStep(raw, TIME_STEP_MIN) : '';
+
+  logTimeEl.value = rounded;
+  selectedTime = rounded;
   timeMode = selectedTime ? 'set' : 'auto';
   tempTime = '';
 
