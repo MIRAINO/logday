@@ -690,6 +690,7 @@ function parseYMD(str){
 ======================= */
 let viewMode = 'week';
 let currentDate = formatYMD(new Date());
+let todayKey = formatYMD(new Date());
 
 // input/edit
 let timeMode = 'auto';
@@ -1093,8 +1094,29 @@ function refreshTimeHint(){
 
 function startTimeTicker(){
   if (timeTicker) return;
+
   timeTicker = setInterval(() => {
+    // ① 時刻ヒント更新（今まで通り）
     if (timeMode === 'auto') refreshTimeHint();
+
+    // ② 0:00跨ぎ検知（ローカル日付）
+    const nowKey = formatYMD(new Date());
+    if (nowKey !== todayKey) {
+      const prevKey = todayKey;
+      todayKey = nowKey;
+
+      // 「前日（=いま表示してた日）」を見てた時だけ翌日に自動ジャンプ
+      // ※ 過去日を見てる時に勝手に飛ばないためのガード
+      if (currentDate === prevKey) {
+        currentDate = nowKey;
+
+        loadDay(currentDate);
+        renderWeekBar(currentDate);
+        generateCalendar();
+
+        showToast("日付が変わりました");
+      }
+    }
   }, 1000);
 }
 
