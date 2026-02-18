@@ -695,6 +695,7 @@ let todayKey = formatYMD(new Date());
 // input/edit
 let timeMode = 'auto';
 let selectedTime = '';
+let tempTime = ''; // ピッカー操作中のプレビュー用
 let timeTicker = null;
 let editingId = null;
 let isSaving = false;
@@ -1120,21 +1121,49 @@ function startTimeTicker(){
   }, 1000);
 }
 
-/* 時計タップ → そのまま “くるくる” */
+/* 時計タップ → ピッカーを開く準備だけ（フォーカス奪わない） */
 logTimeEl.addEventListener('pointerdown', () => {
-  logTimeEl.value = nowHHMM();  // iOS対策：空だとpicker出にくい時がある
-  refreshTimeHint();
+  // 空のままだと開きにくい端末対策：初回だけ now を入れる
+  if (!logTimeEl.value) logTimeEl.value = nowHHMM();
+  // ここでは refreshTimeHint() しない（勝手に確定させない）
 }, { passive:true });
 
+/* 回してる最中：プレビュー表示だけ更新（確定しない） */
+logTimeEl.addEventListener('input', () => {
+  tempTime = logTimeEl.value || '';
+  if (tempTime) {
+    timeHint.textContent = tempTime;
+    timeHint.className = 'isSet'; // 見た目はセットっぽくしてOK
+  } else {
+    refreshTimeHint();
+  }
+
+  // ★ここで logInput.focus() しない！
+  // ★ここで timeMode を確定しない！
+}, { passive:true });
+
+/* ピッカーを閉じたタイミングで確定（iOSはblurが安定） */
+logTimeEl.addEventListener('blur', () => {
+  selectedTime = logTimeEl.value || '';
+  timeMode = selectedTime ? 'set' : 'auto';
+  tempTime = '';
+
+  refreshTimeHint();
+
+  // 時計を触ったら入力しやすい形にはする（でもフォーカスは奪わない）
+  expandInputBar();
+}, { passive:true });
+
+/* 念のため：changeでも確定（端末差） */
 logTimeEl.addEventListener('change', () => {
   selectedTime = logTimeEl.value || '';
   timeMode = selectedTime ? 'set' : 'auto';
-  refreshTimeHint();
+  tempTime = '';
 
-  // 時計を触ったら入力しやすい状態へ
+  refreshTimeHint();
   expandInputBar();
-  logInput.focus();
-});
+}, { passive:true });
+
 
 /* --- フォーカスで展開（写真1） --- */
 logInput.addEventListener('focus', () => {
