@@ -146,7 +146,12 @@
   .entry:active{ transform: translateY(1px); }
 
   .time{color:#888;width:60px;display:inline-block;vertical-align:top;}
-  .text{display:block;margin-left:60px;}
+  .text{
+  display:block;
+  margin-left:60px;
+  white-space: pre-wrap;  /* ←これ */
+  word-break: break-word; /* ←おまけ（長文崩れ防止） */
+}
 
   img.entryPhoto{
     display:block;
