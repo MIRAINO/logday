@@ -592,6 +592,8 @@
       </label>
 
       <button id="closeSettings" class="ghostBtn" type="button">閉じる</button>
+
+      <button id="timeStepBtn" class="ghostBtn" type="button">分刻み：10分</button>
     </div>
   </div>
 </div>
@@ -725,7 +727,21 @@ let timeTicker = null;
 let editingId = null;
 let isSaving = false;
 
-const TIME_STEP_MIN = 10; // ← ここ！
+const STEP_KEY = 'logday_time_step_min';
+
+function getTimeStepMin(){
+  const v = parseInt(localStorage.getItem(STEP_KEY) || '10', 10);
+  return (v === 1 || v === 10) ? v : 10;
+}
+
+function setTimeStepMin(v){
+  const step = (v === 1 || v === 10) ? v : 10;
+  localStorage.setItem(STEP_KEY, String(step));
+  applyTimeStepToUI(step);
+  showToast(step === 1 ? '分刻み：1分' : '分刻み：10分');
+}
+
+let timeStepMin = getTimeStepMin();
 
 // attachments pending
 let pendingDataUrl = null;
@@ -1120,6 +1136,16 @@ function refreshTimeHint(){
   timeHint.className = 'isAuto';
 }
 
+
+function applyTimeStepToUI(stepMin){
+  timeStepMin = stepMin;
+
+  // type="time" の step は “秒”
+  // 1分=60秒 / 10分=600秒
+  logTimeEl.step = String(stepMin * 60);
+}
+
+
 function startTimeTicker(){
   if (timeTicker) return;
 
@@ -1172,7 +1198,7 @@ logTimeEl.addEventListener('input', () => {
 /* ピッカーを閉じたタイミングで確定（iOSはblurが安定） */
 logTimeEl.addEventListener('blur', () => {
   const raw = logTimeEl.value || '';
-  const rounded = raw ? roundTimeToStep(raw, TIME_STEP_MIN) : '';
+  const rounded = raw ? roundTimeToStep(raw, timeStepMin) : '';
 
   logTimeEl.value = rounded;      // ピッカー値を丸め後に更新
   selectedTime = rounded;
@@ -1186,7 +1212,7 @@ logTimeEl.addEventListener('blur', () => {
 /* 念のため：changeでも確定（端末差） */
 logTimeEl.addEventListener('change', () => {
   const raw = logTimeEl.value || '';
-  const rounded = raw ? roundTimeToStep(raw, TIME_STEP_MIN) : '';
+  const rounded = raw ? roundTimeToStep(raw, timeStepMin) : '';
 
   logTimeEl.value = rounded;
   selectedTime = rounded;
@@ -1375,7 +1401,7 @@ saveBtn.onclick = () => {
 
     let time = '';
 if (timeMode === 'set') {
-  time = roundTimeToStep(selectedTime, TIME_STEP_MIN) || selectedTime;
+  time = time = roundTimeToStep(selectedTime, timeStepMin) || selectedTime;
   selectedTime = time;
   logTimeEl.value = time;
 } else if (timeMode === 'auto') {
@@ -1458,11 +1484,21 @@ const settingsBackdrop = byId('settingsBackdrop');
 function openSettings(){
   settingsModal.classList.add('open');
   settingsModal.setAttribute('aria-hidden','false');
+
+  byId('closeSettings').focus(); // 最初のフォーカス
 }
+
+
 function closeSettingsModal(){
+
+  // ★ まずフォーカスを安全な場所へ逃がす
+  settingsBtn.focus();   // 設定ボタンに戻すのが自然
+
   settingsModal.classList.remove('open');
   settingsModal.setAttribute('aria-hidden','true');
 }
+
+
 settingsBtn.onclick = openSettings;
 closeSettings.onclick = closeSettingsModal;
 settingsBackdrop.onclick = closeSettingsModal;
@@ -1482,6 +1518,26 @@ byId('exportLogday').onclick = () => {
   a.download = `logday-backup-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
 };
+
+
+const timeStepBtn = byId('timeStepBtn');
+
+function refreshTimeStepLabel(){
+  if (!timeStepBtn) return;
+  timeStepBtn.textContent = (timeStepMin === 1) ? '分刻み：1分' : '分刻み：10分';
+}
+
+if (timeStepBtn){
+  refreshTimeStepLabel();
+
+  timeStepBtn.onclick = () => {
+    // トグル式：10⇄1
+    const next = (timeStepMin === 10) ? 1 : 10;
+    setTimeStepMin(next);
+    refreshTimeStepLabel();
+  };
+}
+
 
 (() => {
   const input = byId('importFile');
@@ -1526,6 +1582,7 @@ generateCalendar();
 showWeek();
 refreshTimeHint();
 startTimeTicker();
+applyTimeStepToUI(timeStepMin);
 </script>
 
 </body>
