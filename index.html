@@ -612,7 +612,17 @@ function nowHHMM(){
 function uid(){
   return "e_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
 }
-function formatYMD(d){ return d.toISOString().slice(0,10); }
+function formatYMD(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseYMD(str){
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d); // ローカル日付として扱う
+}
 
 function timeToMinutes(t){
   if(!t) return 999999; // 無時間は最後に回す
@@ -670,11 +680,16 @@ function sortEntries(dayData){
   });
 }
 
+function parseYMD(str){
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d); // ←ローカル日付として生成
+}
+
 /* =======================
    App State
 ======================= */
 let viewMode = 'week';
-let currentDate = new Date().toISOString().slice(0,10);
+let currentDate = formatYMD(new Date());
 
 // input/edit
 let timeMode = 'auto';
@@ -692,14 +707,18 @@ let pendingName = '';
    Header / Date / Calendar
 ======================= */
 function renderNavDate(dateStr){
-  const d = new Date(dateStr);
-  const dateText = d.toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'});
+  const d = parseYMD(dateStr);
+  const dateText = d.toLocaleDateString('ja-JP',{
+    year:'numeric',
+    month:'2-digit',
+    day:'2-digit'
+  });
   const weekdayText = d.toLocaleDateString('ja-JP',{weekday:'short'});
   byId('navDate').textContent = `${dateText}（${weekdayText}）`;
 }
 
 function startOfWeek(dateStr){
-  const d = new Date(dateStr);
+  const d = parseYMD(dateStr);
   const day = d.getDay();
   const diff = (day === 0) ? -6 : (1 - day);
   d.setDate(d.getDate() + diff);
