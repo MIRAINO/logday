@@ -1374,9 +1374,15 @@ saveBtn.onclick = () => {
     const text = logInput.value.trim();
 
     let time = '';
-    if (timeMode === 'set') time = selectedTime;
-    else if (timeMode === 'auto') time = nowHHMM();
-    else time = '';
+if (timeMode === 'set') {
+  time = roundTimeToStep(selectedTime, TIME_STEP_MIN) || selectedTime;
+  selectedTime = time;
+  logTimeEl.value = time;
+} else if (timeMode === 'auto') {
+  time = nowHHMM();
+} else {
+  time = '';
+}
 
     if (!text && !pendingDataUrl) {
       collapseInputBar();
