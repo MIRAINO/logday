@@ -134,32 +134,24 @@
   /* =======================
      Entries
   ======================= */
-  .entry{
-    background:#fff;
-    padding:10px 12px;
-    border-radius:10px;
-    box-shadow:0 1px 4px rgba(0,0,0,0.06);
-    margin-bottom:12px;
-    cursor:pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .entry:active{ transform: translateY(1px); }
-
   .time{color:#888;width:60px;display:inline-block;vertical-align:top;}
   .text{
-  display:block;
-  margin-left:60px;
-  white-space: pre-wrap;  /* ←これ */
-  word-break: break-word; /* ←おまけ（長文崩れ防止） */
-}
+    display:block;
+    margin-left:60px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 
   img.entryPhoto{
     display:block;
     margin-top:6px;
     margin-left:60px;
-    max-width:100%;
+    width: calc(100% - 60px);
+    max-height: 260px;
+    object-fit: cover;
     border-radius:10px;
   }
+
   .fileLine{
     margin-left:60px;
     margin-top:6px;
@@ -178,253 +170,223 @@
     font-size:.95em;
   }
 
-/* =======================
-   Input Bar (bottom) 置換用（崩れない版）
-======================= */
+  /* =======================
+     Input Bar (bottom)
+  ======================= */
+  #inputBar{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    background:#fff;
+    border-top:1px solid #ddd;
+    padding:10px 12px;
 
-#inputBar{
-  position:fixed;
-  left:0; right:0; bottom:0;
-  background:#fff;
-  border-top:1px solid #ddd;
-  padding:10px 12px;
+    display:flex;
+    flex-wrap:nowrap;
+    align-items:center;
+    gap:8px;
 
-  display:flex;
-  flex-wrap:nowrap;          /* ★通常は1段固定 */
-  align-items:center;
-  gap:8px;
+    z-index:9999;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+    max-height:320px;
+  }
 
-  z-index:9999;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
-  max-height:320px;
-}
+  #plusBtn{ flex:0 0 auto; }
+  #timeHintWrap{ flex:0 0 auto; }
 
-/* ▼ 通常時：横並び（＋ / 時刻 / 入力 / 保存） */
-#plusBtn{ flex:0 0 auto; }
-#timeHintWrap{ flex:0 0 auto; }
+  #logInput{
+    flex:1 1 auto;
+    min-width:0;
+    height:36px;
+    resize:none;
 
-#logInput{
-  flex:1 1 auto;             /* ★横に伸びる */
-  min-width:0;               /* ★段落ち防止（超重要） */
-  height:36px;
-  resize:none;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.18);
+    padding:8px 10px;
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    box-sizing:border-box;
+    outline:none;
+    background:#fff;
+    font-size:16px;
+    line-height:1.4;
 
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,0.18);
-  padding:8px 10px;
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  box-sizing:border-box;
-  outline:none;
-  background:#fff;
-  font-size:16px;
-  line-height:1.4;
+    overflow:hidden;
+  }
 
-  /* ★“1行っぽく”見せる */
-  overflow:hidden;
-}
+  #saveBtn{
+    flex:0 0 auto;
+    height:34px;
+    padding:0 14px;
+    border-radius:12px;
+    border:none;
+    background:#111;
+    color:#fff;
+    cursor:pointer;
+    white-space:nowrap;
 
-#saveBtn{
-  flex:0 0 auto;
-  height:34px;
-  padding:0 14px;
-  border-radius:12px;
-  border:none;
-  background:#111;
-  color:#fff;
-  cursor:pointer;
-  white-space:nowrap;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
 
-  display:inline-flex;       /* ★常に表示 */
-  align-items:center;
-  justify-content:center;
-}
+  #previewArea{
+    display:none;
+    flex:0 0 100%;
+    width:100%;
+  }
+  #inputBar.expanded #previewArea.hasContent{
+    display:block;
+    order:5;
+  }
 
-/* プレビューは：通常は非表示（1段固定を守る） */
-#previewArea{
-  display:none;
-  flex:0 0 100%;
-  width:100%;
-}
-#inputBar.expanded #previewArea.hasContent{
-  display:block;
-  order:5;
-}
+  #inputBar.expanded{
+    flex-wrap:wrap;
+    margin: 0 12px 12px;
+    border-radius:16px;
+    border-top:none;
+    border:1px solid rgba(0,0,0,0.10);
+    padding:12px;
+    box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
+    transform: translateY(-2px);
+    background: rgba(255,255,255,0.98);
+    backdrop-filter: blur(10px);
+  }
 
-/* ▼ 展開時：写真1の形（上に大きい入力欄 / 下にボタン列） */
-#inputBar.expanded{
-  flex-wrap:wrap;            /* ★展開時だけ2段OK */
-  margin: 0 12px 12px;
-  border-radius:16px;
-  border-top:none;
-  border:1px solid rgba(0,0,0,0.10);
-  padding:12px;
-  box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
-  transform: translateY(-2px);
-  background: rgba(255,255,255,0.98);
-  backdrop-filter: blur(10px);
-}
+  #inputBar.expanded #logInput{
+    flex:0 0 100%;
+    width:100%;
+    order:1;
 
-/* 展開時：入力欄が上段100%（大きい見た目） */
-#inputBar.expanded #logInput{
-  flex:0 0 100%;
-  width:100%;
-  order:1;
+    height:120px;
+    max-height:180px;
+    border-radius:18px;
+    border:1px solid rgba(0,0,0,0.16);
+    padding:10px 12px;
+    line-height:1.5;
 
-  height:120px;              /* ←写真1寄せ。64にしたいなら64でもOK */
-  max-height:180px;
-  border-radius:18px;
-  border:1px solid rgba(0,0,0,0.16);
-  padding:10px 12px;
-  line-height:1.5;
+    overflow:auto;
+  }
 
-  overflow:auto;             /* 展開時は普通にスクロール */
-}
+  #inputBar.expanded #plusBtn{ order:2; }
+  #inputBar.expanded #timeHintWrap{ order:3; }
+  #inputBar.expanded #saveBtn{
+    order:4;
+    margin-left:auto;
+    height:40px;
+    padding:0 16px;
+    border-radius:14px;
+  }
 
-/* 展開時：下段にボタン列 */
-#inputBar.expanded #plusBtn{ order:2; }
-#inputBar.expanded #timeHintWrap{ order:3; }
-#inputBar.expanded #saveBtn{
-  order:4;
-  margin-left:auto;          /* ★右端へ */
-  height:40px;
-  padding:0 16px;
-  border-radius:14px;
-}
+  .iconBtn{
+    width:34px; height:34px;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.14);
+    background:#fff;
+    cursor:pointer;
+    font-size:16px;
+    line-height:1;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    -webkit-tap-highlight-color: transparent;
+    flex:0 0 auto;
+  }
+  .iconBtn:active{ transform: translateY(1px); }
 
-/* --- 既存の部品（そのまま） --- */
-.iconBtn{
-  width:34px; height:34px;
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,0.14);
-  background:#fff;
-  cursor:pointer;
-  font-size:16px;
-  line-height:1;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  -webkit-tap-highlight-color: transparent;
-  flex:0 0 auto;
-}
-.iconBtn:active{ transform: translateY(1px); }
+  #timeHintWrap{
+    position:relative;
+    height:34px;
+    display:inline-flex;
+    align-items:center;
+    padding:0 10px;
+    border-radius:12px;
+    border:1px solid rgba(0,0,0,0.10);
+    background:rgba(0,0,0,0.02);
+    font-size:14px;
+    color:#111;
+    flex:0 0 auto;
+    user-select:none;
+    min-width:62px;
+    justify-content:center;
+  }
 
-#timeHintWrap{
-  position:relative;
-  height:34px;
-  display:inline-flex;
-  align-items:center;
-  padding:0 10px;
-  border-radius:12px;
-  border:1px solid rgba(0,0,0,0.10);
-  background:rgba(0,0,0,0.02);
-  font-size:14px;
-  color:#111;
-  flex:0 0 auto;
-  user-select:none;
-  min-width:62px;
-  justify-content:center;
-}
+  .timeOverlay{
+    position:absolute;
+    inset:0;
+    opacity:0;
+    z-index:10001;
+    border:none;
+    background:transparent;
+  }
 
-.timeOverlay{
-  position:absolute;
-  inset:0;
-  opacity:0;
-  z-index:10001;
-  border:none;
-  background:transparent;
-}
+  #previewArea img{
+    max-width:100%;
+    border-radius:10px;
+    margin-top:8px;
+  }
+  #previewArea .filePreview{
+    margin-top:8px;
+    color:#666;
+    font-size:14px;
+  }
 
-#previewArea img{
-  max-width:100%;
-  border-radius:10px;
-  margin-top:8px;
-}
-#previewArea .filePreview{
-  margin-top:8px;
-  color:#666;
-  font-size:14px;
-}
-
-/* ★これが抜けると「ファイルを選択」が出て崩れる */
-.fileInput{
-  position:fixed;
-  top:-10000px; left:-10000px;
-  width:1px; height:1px;
-  opacity:0;
-  pointer-events:none;
-}
-
+  /* hidden file input */
+  .fileInput{
+    position:fixed;
+    top:-10000px; left:-10000px;
+    width:1px; height:1px;
+    opacity:0;
+    pointer-events:none;
+  }
 
   /* ===== Swipe to delete ===== */
+  .entrySwipe.removing{ animation: entryFadeOut .18s ease forwards; }
+  @keyframes entryFadeOut{ to { opacity:0; transform: scale(0.98); } }
 
-  /* 削除アニメ */
-.entrySwipe.removing{
-  animation: entryFadeOut .18s ease forwards;
-}
-@keyframes entryFadeOut{
-  to { opacity:0; transform: scale(0.98); }
-}
+  .entrySwipe{
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06);
+    background:#fff;
+    touch-action: pan-y;
+  }
+  .entryActions{
+    position:absolute;
+    top:0; right:0; bottom:0;
+    display:flex;
+    align-items:stretch;
+    justify-content:flex-end;
+    padding:0;
+  }
+  .entryDeleteBtn{
+    width: 84px;
+    border:none;
+    background:#ff3b30;
+    color:#fff;
+    font-weight:600;
+    cursor:pointer;
 
-/* Content をスワイプに追従させる時の見た目 */
-.entryContent{
-  transition: transform .32s cubic-bezier(.22,1.35,.3,1);
-}
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    font-size:12px;
+  }
+  .entryDeleteBtn .icon{ font-size:18px; line-height:1; }
 
-/* 削除ボタンの中身（アイコン+文字） */
-.entryDeleteBtn{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:4px;
-  font-size:12px;
-}
-.entryDeleteBtn .icon{
-  font-size:18px;
-  line-height:1;
-}
-
-
-.entrySwipe{
-  position: relative;
-  overflow: hidden;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  box-shadow:0 1px 4px rgba(0,0,0,0.06);
-  background:#fff;
-  touch-action: pan-y; /* 縦スクロール優先 */
-}
-
-.entryActions{
-  position:absolute;
-  top:0; right:0; bottom:0;
-  display:flex;
-  align-items:stretch;
-  justify-content:flex-end;
-  padding:0;
-}
-
-.entryDeleteBtn{
-  width: 84px;
-  border:none;
-  background:#ff3b30;
-  color:#fff;
-  font-weight:600;
-  cursor:pointer;
-}
-
-.entryContent{
-  position: relative;
-  background:#fff;
-  padding:10px 12px;
-  transform: translateX(0);
-  will-change: transform;
-  transition: transform .18s ease;
-}
-
-.entrySwipe.open .entryContent{
-  transform: translateX(-84px); /* delete幅と同じ */
-}
+  .entryContent{
+    position: relative;
+    background:#fff;
+    padding:10px 12px;
+    transform: translateX(0);
+    will-change: transform;
+    transition: transform .18s ease;
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .entrySwipe.open .entryContent{ transform: translateX(-84px); }
 
   /* =======================
      Plus Sheet
@@ -557,8 +519,6 @@
     <input id="logTime" type="time" class="timeOverlay" step="600">
   </div>
 
-  
-
   <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
   <button id="saveBtn" type="button">保存</button>
 
@@ -569,22 +529,24 @@
   <input id="takePhotoInput" type="file" class="fileInput" accept="image/*" capture="environment">
 </div>
 
-<div id="plusSheet" aria-hidden="true">
+<!-- ✅ aria-hiddenは使わず、inertだけでフォーカス/アクセシビリティを安全に制御 -->
+<div id="plusSheet" inert>
   <div id="plusSheetBackdrop"></div>
   <div id="plusSheetPanel" role="dialog" aria-modal="true" aria-label="追加">
-    <button class="sheetBtn" id="actPhoto">写真ライブラリ</button>
-    <button class="sheetBtn" id="actCamera">写真を撮る</button>
-    <button class="sheetBtn" id="actFile">ファイルを選択</button>
-    <button class="sheetBtn cancel" id="actCancel">キャンセル</button>
+    <button class="sheetBtn" id="actPhoto" type="button">写真ライブラリ</button>
+    <button class="sheetBtn" id="actCamera" type="button">写真を撮る</button>
+    <button class="sheetBtn" id="actFile" type="button">ファイルを選択</button>
+    <button class="sheetBtn cancel" id="actCancel" type="button">キャンセル</button>
   </div>
 </div>
 
-<div id="settingsModal" aria-hidden="true">
+<div id="settingsModal" inert>
   <div id="settingsBackdrop"></div>
   <div id="settingsPanel" role="dialog" aria-modal="true" aria-label="設定">
     <h3>設定</h3>
     <div class="row">
       <button id="exportLogday" class="ghostBtn" type="button">データを書き出す</button>
+      <button id="cleanupStorage" class="ghostBtn" type="button">容量を回復</button>
 
       <label class="ghostBtn" role="button">
         データを復元する
@@ -592,7 +554,6 @@
       </label>
 
       <button id="closeSettings" class="ghostBtn" type="button">閉じる</button>
-
       <button id="timeStepBtn" class="ghostBtn" type="button">分刻み：10分</button>
     </div>
   </div>
@@ -601,12 +562,10 @@
 <div id="toast">保存しました</div>
 
 <script>
-
 /* =======================
    Utilities / Storage
 ======================= */
 function byId(id){ return document.getElementById(id); }
-
 function pad2(n){ return String(n).padStart(2,'0'); }
 function nowHHMM(){
   const d = new Date();
@@ -621,21 +580,16 @@ function formatYMD(d){
   const day = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
 }
-
 function parseYMD(str){
   const [y,m,d] = str.split('-').map(Number);
-  return new Date(y, m-1, d); // ローカル日付として扱う
+  return new Date(y, m-1, d);
 }
-
 function timeToMinutes(t){
-  if(!t) return 999999; // 無時間は最後に回す
+  if(!t) return 999999;
   const m = String(t).match(/^(\d{1,2}):(\d{2})$/);
   if(!m) return 999999;
-  const h = parseInt(m[1],10);
-  const mi = parseInt(m[2],10);
-  return h*60 + mi;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
 }
-
 function showToast(message){
   const toast = byId('toast');
   toast.textContent = message;
@@ -643,14 +597,17 @@ function showToast(message){
   setTimeout(() => toast.classList.remove('show'), 1200);
 }
 
-// 保存はこれ1つに統一（失敗時はfalse）
 window.saveDayData = function(dateKey, dayData){
   try {
     localStorage.setItem(dateKey, JSON.stringify(dayData));
     return true;
   } catch (err) {
     console.error("saveDayData failed:", err);
-    showToast("保存できなかった（容量かも）");
+    if (err && String(err.name) === "QuotaExceededError") {
+      showToast("保存できなかった：容量オーバー（古い写真データが残ってるかも）");
+    } else {
+      showToast("保存できなかった…");
+    }
     return false;
   }
 };
@@ -658,59 +615,130 @@ window.saveDayData = function(dateKey, dayData){
 function getDayData(dateKey){
   const dayData = JSON.parse(localStorage.getItem(dateKey) || '{}');
   dayData.entries = dayData.entries || [];
-
-  // 古いデータ補完（ここでは保存しない）
   dayData.entries.forEach(e=>{
     if(!e.id) e.id = uid();
     if(e.createdAt == null) e.createdAt = Date.now();
   });
-
   return dayData;
 }
-
 function sortEntries(dayData){
   const arr = dayData.entries || [];
   arr.sort((a,b)=>{
     const ta = timeToMinutes(a.time);
     const tb = timeToMinutes(b.time);
     if (ta !== tb) return ta - tb;
-
     const ca = a.createdAt ?? 0;
     const cb = b.createdAt ?? 0;
     if (ca !== cb) return ca - cb;
-
     return String(a.id||"").localeCompare(String(b.id||""));
   });
 }
-
-function parseYMD(str){
-  const [y,m,d] = str.split('-').map(Number);
-  return new Date(y, m-1, d); // ←ローカル日付として生成
-}
-
-
-
 function roundTimeToStep(timeStr, stepMin){
   const m = String(timeStr || '').match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return '';
-
   let h = parseInt(m[1], 10);
   let mi = parseInt(m[2], 10);
-
-  // 分→stepで丸め（四捨五入）
   const rounded = Math.round(mi / stepMin) * stepMin;
-
-  if (rounded === 60) {
-    mi = 0;
-    h = (h + 1) % 24;
-  } else {
-    mi = rounded;
-  }
-
+  if (rounded === 60) { mi = 0; h = (h + 1) % 24; }
+  else { mi = rounded; }
   return `${pad2(h)}:${pad2(mi)}`;
 }
 
+/* =======================
+   IndexedDB (photos)
+======================= */
+const DB_NAME = 'logday_db';
+const DB_VER  = 1;
+let dbPromise = null;
 
+function openDB(){
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('photos')) {
+        const store = db.createObjectStore('photos', { keyPath: 'id' });
+        store.createIndex('createdAt', 'createdAt', { unique:false });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+async function idbPutPhoto({ id, blob, mime, name, createdAt }){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    tx.objectStore('photos').put({ id, blob, mime, name, createdAt });
+  });
+}
+async function idbGetPhoto(id){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readonly');
+    const req = tx.objectStore('photos').get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbDeletePhoto(id){
+  if (!id) return;
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    tx.objectStore('photos').delete(id);
+  });
+}
+async function dataUrlToBlob(dataUrl){
+  const res = await fetch(dataUrl);
+  return await res.blob();
+}
+
+/* =======================
+   Legacy photo migration (localStorage -> IDB)
+   - QuotaExceededの根本原因は「昔の data:image/... がlocalStorageに残ってる」こと
+   - 表示/編集を壊さず、見つけ次第IDBへ移して localStorage から削除する
+======================= */
+async function migrateLegacyPhotosForDay(dateKey){
+  const dayData = getDayData(dateKey);
+  let changed = false;
+  let moved = 0;
+
+  for (const e of (dayData.entries || [])) {
+    const isLegacy = e && typeof e.photo === 'string' && e.photo.startsWith('data:image/');
+    const needsMove = isLegacy && !e.photoId;
+
+    if (!needsMove) continue;
+
+    try{
+      const blob = await dataUrlToBlob(e.photo);
+      const pid = 'p_' + uid();
+      await idbPutPhoto({ id: pid, blob, mime: blob.type || 'image/jpeg', name: 'photo.jpg', createdAt: e.createdAt || Date.now() });
+
+      e.photoId = pid;
+      delete e.photo; // ← localStorageから巨大データを消す
+      moved++;
+      changed = true;
+    }catch(err){
+      console.warn('legacy migrate failed', err);
+      // 失敗したら最悪でも容量確保のため削る（表示は消えるが保存は復帰する）
+      delete e.photo;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    // 小さくなるので通る可能性が高い
+    window.saveDayData(dateKey, dayData);
+  }
+  return { changed, moved };
+}
 
 /* =======================
    App State
@@ -719,49 +747,48 @@ let viewMode = 'week';
 let currentDate = formatYMD(new Date());
 let todayKey = formatYMD(new Date());
 
-// input/edit
 let timeMode = 'auto';
 let selectedTime = '';
-let tempTime = ''; // ピッカー操作中のプレビュー用
+let tempTime = '';
 let timeTicker = null;
 let editingId = null;
 let isSaving = false;
 
 const STEP_KEY = 'logday_time_step_min';
-
 function getTimeStepMin(){
   const v = parseInt(localStorage.getItem(STEP_KEY) || '10', 10);
   return (v === 1 || v === 10) ? v : 10;
 }
-
 function setTimeStepMin(v){
   const step = (v === 1 || v === 10) ? v : 10;
   localStorage.setItem(STEP_KEY, String(step));
   applyTimeStepToUI(step);
   showToast(step === 1 ? '分刻み：1分' : '分刻み：10分');
 }
-
 let timeStepMin = getTimeStepMin();
 
-// attachments pending
-let pendingDataUrl = null;
-let pendingMime = '';
+// attachments: 写真はIDB, localStorageには入れない
+let pendingPhotoId = null;
+let pendingPhotoUrl = null;
 let pendingName = '';
+let editingPrevPhotoId = null;
+
+function revokePendingPhotoUrl(){
+  if (pendingPhotoUrl) {
+    try { URL.revokeObjectURL(pendingPhotoUrl); } catch(e){}
+    pendingPhotoUrl = null;
+  }
+}
 
 /* =======================
    Header / Date / Calendar
 ======================= */
 function renderNavDate(dateStr){
   const d = parseYMD(dateStr);
-  const dateText = d.toLocaleDateString('ja-JP',{
-    year:'numeric',
-    month:'2-digit',
-    day:'2-digit'
-  });
-  const weekdayText = d.toLocaleDateString('ja-JP',{weekday:'short'});
+  const dateText = d.toLocaleDateString('ja-JP',{ year:'numeric', month:'2-digit', day:'2-digit' });
+  const weekdayText = d.toLocaleDateString('ja-JP',{ weekday:'short' });
   byId('navDate').textContent = `${dateText}（${weekdayText}）`;
 }
-
 function startOfWeek(dateStr){
   const d = parseYMD(dateStr);
   const day = d.getDay();
@@ -769,7 +796,6 @@ function startOfWeek(dateStr){
   d.setDate(d.getDate() + diff);
   return d;
 }
-
 function renderWeekBar(dateStr){
   const bar = byId('weekBar');
   bar.style.display = (viewMode === 'week') ? 'grid' : 'none';
@@ -789,16 +815,15 @@ function renderWeekBar(dateStr){
     btn.innerHTML = `${wnames[i]}<span class="d">${d.getDate()}</span>`;
     btn.classList.toggle('active', ymd === currentDate);
 
-    btn.onclick = () => {
+    btn.onclick = async () => {
       currentDate = ymd;
-      loadDay(currentDate);
+      await loadDay(currentDate);
       renderWeekBar(currentDate);
       generateCalendar();
     };
     bar.appendChild(btn);
   }
 }
-
 function generateCalendar(){
   const cal = byId('calendar');
   cal.innerHTML = '';
@@ -825,9 +850,9 @@ function generateCalendar(){
     btn.dataset.date = dayStr;
     btn.classList.toggle('active', dayStr === currentDate);
 
-    btn.onclick = () => {
+    btn.onclick = async () => {
       currentDate = dayStr;
-      loadDay(currentDate);
+      await loadDay(currentDate);
       generateCalendar();
       renderWeekBar(currentDate);
     };
@@ -835,18 +860,20 @@ function generateCalendar(){
   }
 }
 
+/* =======================
+   Swipe to delete
+======================= */
 const SWIPE_OPEN_X = -84;
 const SWIPE_THRESHOLD = -42;
 const SWIPE_FULL_DELETE = -170;
 const SWIPE_OVERSHOOT = 26;
-let openSwipeId = null;        // 今開いてるentryのid
+let openSwipeId = null;
 let swipeLock = { active:false, moved:false, id:null, startX:0, startY:0, currentX:0 };
 
 function closeAllSwipes(){
   document.querySelectorAll('.entrySwipe.open').forEach(el => el.classList.remove('open'));
   openSwipeId = null;
 }
-
 function closeOtherSwipes(keepId){
   document.querySelectorAll('.entrySwipe.open').forEach(el => {
     if (el.dataset.id !== keepId) el.classList.remove('open');
@@ -869,7 +896,7 @@ function attachSwipeHandlers(wrapEl, contentEl){
 
     contentEl.style.transition = 'none';
     wrapEl.setPointerCapture?.(e.pointerId);
-  }, { passive: true });
+  }, { passive:true });
 
   wrapEl.addEventListener('pointermove', (e) => {
     if (!swipeLock.active || swipeLock.id !== wrapEl.dataset.id) return;
@@ -882,14 +909,12 @@ function attachSwipeHandlers(wrapEl, contentEl){
       contentEl.style.transition = '';
       return;
     }
-
     if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
 
     swipeLock.moved = true;
 
     const base = wrapEl.classList.contains('open') ? SWIPE_OPEN_X : 0;
     let x = base + dx;
-
     x = Math.min(0, x);
 
     if (x < SWIPE_FULL_DELETE) {
@@ -897,12 +922,11 @@ function attachSwipeHandlers(wrapEl, contentEl){
       x = SWIPE_FULL_DELETE + over * 0.35;
       x = Math.max(SWIPE_FULL_DELETE - SWIPE_OVERSHOOT, x);
     }
-
     swipeLock.currentX = x;
     contentEl.style.transform = `translateX(${x}px)`;
-  }, { passive: true });
+  }, { passive:true });
 
-  const finish = () => {
+  const finish = async () => {
     if (!swipeLock.active || swipeLock.id !== wrapEl.dataset.id) return;
 
     contentEl.style.transition = '';
@@ -925,7 +949,6 @@ function attachSwipeHandlers(wrapEl, contentEl){
         contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
         deleteEntryById(wrapEl.dataset.id, wrapEl);
       }, 60);
-
       swipeLock.active = false;
       return;
     }
@@ -943,36 +966,36 @@ function attachSwipeHandlers(wrapEl, contentEl){
     swipeLock.active = false;
   };
 
-  wrapEl.addEventListener('pointerup', finish, { passive: true });
-  wrapEl.addEventListener('pointercancel', finish, { passive: true });
+  wrapEl.addEventListener('pointerup', finish, { passive:true });
+  wrapEl.addEventListener('pointercancel', finish, { passive:true });
 }
 
-function deleteEntryById(entryId, wrapEl){
+async function deleteEntryById(entryId, wrapEl){
   const dayData = getDayData(currentDate);
   const idx = dayData.entries.findIndex(e => e.id === entryId);
   if (idx < 0) return;
 
-  // UI先行：消えるアニメ
+  const photoId = dayData.entries[idx]?.photoId || null;
   if (wrapEl) wrapEl.classList.add('removing');
 
-  // ほんの少し待ってから実削除（アニメが見える）
-  setTimeout(() => {
+  setTimeout(async () => {
     dayData.entries.splice(idx, 1);
     sortEntries(dayData);
 
     const ok = window.saveDayData(currentDate, dayData);
     if (!ok) {
-      // 保存失敗なら見た目を戻す（最小）
       if (wrapEl) wrapEl.classList.remove('removing');
       return;
     }
+    if (photoId) {
+      try { await idbDeletePhoto(photoId); } catch(e){ console.warn(e); }
+    }
 
     showToast('削除しました');
-    loadDay(currentDate);
+    await loadDay(currentDate);
   }, 120);
 }
 
-// 画面タップで開いてるスワイプを閉じる（入力バー以外）
 document.addEventListener('pointerdown', (e) => {
   if (openSwipeId && !e.target.closest('.entrySwipe')) closeAllSwipes();
 }, {passive:true});
@@ -980,7 +1003,27 @@ document.addEventListener('pointerdown', (e) => {
 /* =======================
    Render Day
 ======================= */
-function loadDay(dateStr){
+function cleanupEntryObjectUrls(){
+  document.querySelectorAll('img.entryPhoto[data-objurl]').forEach(img=>{
+    try { URL.revokeObjectURL(img.dataset.objurl); } catch(e){}
+    img.removeAttribute('data-objurl');
+  });
+}
+async function renderEntryPhoto(imgEl, photoId){
+  try{
+    const rec = await idbGetPhoto(photoId);
+    if (!rec || !rec.blob) return;
+    const url = URL.createObjectURL(rec.blob);
+    imgEl.src = url;
+    imgEl.dataset.objurl = url;
+  }catch(e){ console.warn(e); }
+}
+
+async function loadDay(dateStr){
+  // まず「その日」に古い写真dataURLがあればIDBへ移してサイズを縮める
+  await migrateLegacyPhotosForDay(dateStr);
+
+  cleanupEntryObjectUrls();
   renderNavDate(dateStr);
 
   const entriesDiv = byId('entries');
@@ -991,75 +1034,69 @@ function loadDay(dateStr){
 
   if(saved.entries && saved.entries.length){
     saved.entries.forEach(entry=>{
-  const wrap = document.createElement('div');
-  wrap.className = 'entrySwipe';
-  wrap.dataset.id = entry.id || '';
+      const wrap = document.createElement('div');
+      wrap.className = 'entrySwipe';
+      wrap.dataset.id = entry.id || '';
 
-  const actions = document.createElement('div');
-  actions.className = 'entryActions';
+      const actions = document.createElement('div');
+      actions.className = 'entryActions';
 
-  const delBtn = document.createElement('button');
-  delBtn.className = 'entryDeleteBtn';
-  delBtn.type = 'button';
-  delBtn.innerHTML = `<span class="icon">🗑️</span><span class="label">削除</span>`;
+      const delBtn = document.createElement('button');
+      delBtn.className = 'entryDeleteBtn';
+      delBtn.type = 'button';
+      delBtn.innerHTML = `<span class="icon">🗑️</span><span class="label">削除</span>`;
+      delBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        deleteEntryById(entry.id, wrap);
+      };
+      actions.appendChild(delBtn);
 
-  delBtn.onclick = (ev) => {
-  ev.stopPropagation();
-  deleteEntryById(entry.id, wrap);
-};
+      const content = document.createElement('div');
+      content.className = 'entryContent';
 
-  actions.appendChild(delBtn);
+      const time = document.createElement('span');
+      time.className = 'time';
+      time.textContent = (entry.time && entry.time.trim()) ? entry.time : '•';
 
-  const content = document.createElement('div');
-  content.className = 'entryContent';
+      const text = document.createElement('span');
+      text.className = 'text';
+      text.textContent = entry.text || '';
 
-  const time = document.createElement('span');
-  time.className = 'time';
-  time.textContent = (entry.time && entry.time.trim()) ? entry.time : '•';
+      content.appendChild(time);
+      content.appendChild(text);
 
-  const text = document.createElement('span');
-  text.className = 'text';
-  text.textContent = entry.text || '';
+      if (entry.photoId) {
+        const img = document.createElement('img');
+        img.className = 'entryPhoto';
+        img.alt = 'photo';
+        img.loading = 'lazy';
+        content.appendChild(img);
+        renderEntryPhoto(img, entry.photoId);
+      }
 
-  content.appendChild(time);
-  content.appendChild(text);
+      if (entry.fileName) {
+        const fileLine = document.createElement('div');
+        fileLine.className = 'fileLine';
+        fileLine.textContent = `📎 ${entry.fileName}`;
+        content.appendChild(fileLine);
+      }
 
-  if (entry.photo) {
-    const img = document.createElement('img');
-    img.className = 'entryPhoto';
-    img.src = entry.photo;
-    img.alt = 'photo';
-    content.appendChild(img);
-  }
+      attachSwipeHandlers(wrap, content);
 
-  if (entry.fileName) {
-    const fileLine = document.createElement('div');
-    fileLine.className = 'fileLine';
-    fileLine.textContent = `📎 ${entry.fileName}`;
-    content.appendChild(fileLine);
-  }
+      content.addEventListener('click', async () => {
+        if (wrap.classList.contains('open')) {
+          wrap.classList.remove('open');
+          openSwipeId = null;
+          return;
+        }
+        if (swipeLock.moved) return;
+        await beginEditById(entry.id);
+      });
 
-  // スワイプ設定
-  attachSwipeHandlers(wrap, content);
-
-  // タップ編集（スワイプ中の誤タップを避ける）
-  content.addEventListener('click', (ev) => {
-    // 開いてる時はタップ=閉じる優先（編集しない）
-    if (wrap.classList.contains('open')) {
-      wrap.classList.remove('open');
-      openSwipeId = null;
-      return;
-    }
-    // スワイプ移動直後は編集しない
-    if (swipeLock.moved) return;
-
-    beginEditById(entry.id);
-  });
-
-  wrap.appendChild(actions);
-  wrap.appendChild(content);
-  entriesDiv.appendChild(wrap);
-});
+      wrap.appendChild(actions);
+      wrap.appendChild(content);
+      entriesDiv.appendChild(wrap);
+    });
   } else {
     entriesDiv.innerHTML = '<div class="emptyState">この日はまだ記録がありません</div>';
   }
@@ -1076,28 +1113,26 @@ function updateToggleLabel(){
   toggleBtn.textContent = (viewMode === 'week') ? '月' : '週';
   toggleBtn.title = (viewMode === 'week') ? '月表示へ' : '週表示へ';
 }
-function showWeek(){
+async function showWeek(){
   viewMode = 'week';
   calEl.classList.add('hidden');
   weekBarEl.style.display = 'grid';
   renderWeekBar(currentDate);
-  loadDay(currentDate);
+  await loadDay(currentDate);
   updateToggleLabel();
 }
-function showMonth(){
+async function showMonth(){
   viewMode = 'month';
   calEl.classList.remove('hidden');
   weekBarEl.style.display = 'none';
   generateCalendar();
-  loadDay(currentDate);
+  await loadDay(currentDate);
   updateToggleLabel();
 }
 toggleBtn.onclick = () => (viewMode === 'week') ? showMonth() : showWeek();
 
-
-
 /* =======================
-   Input Bar 置換（beforeinput / input / blur）
+   Input Bar
 ======================= */
 const inputBar = byId('inputBar');
 const plusBtn  = byId('plusBtn');
@@ -1112,19 +1147,9 @@ const photoEl     = byId('pickPhotoInput');
 const cameraEl    = byId('takePhotoInput');
 const previewArea = byId('previewArea');
 
-const plusSheet = byId('plusSheet');
-const plusSheetBackdrop = byId('plusSheetBackdrop');
-const actPhoto = byId('actPhoto');
-const actCamera= byId('actCamera');
-const actFile  = byId('actFile');
-const actCancel= byId('actCancel');
-
 function expandInputBar(){ inputBar.classList.add('expanded'); }
 function collapseInputBar(){ inputBar.classList.remove('expanded'); }
-
-function setPreviewVisible(isOn){
-  previewArea.classList.toggle('hasContent', !!isOn);
-}
+function setPreviewVisible(isOn){ previewArea.classList.toggle('hasContent', !!isOn); }
 
 function refreshTimeHint(){
   if (timeMode === 'set' && selectedTime) {
@@ -1135,148 +1160,104 @@ function refreshTimeHint(){
   timeHint.textContent = nowHHMM();
   timeHint.className = 'isAuto';
 }
-
-
 function applyTimeStepToUI(stepMin){
   timeStepMin = stepMin;
-
-  // type="time" の step は “秒”
-  // 1分=60秒 / 10分=600秒
   logTimeEl.step = String(stepMin * 60);
 }
-
 
 function startTimeTicker(){
   if (timeTicker) return;
 
-  timeTicker = setInterval(() => {
-    // ① 時刻ヒント更新（今まで通り）
+  timeTicker = setInterval(async () => {
     if (timeMode === 'auto') refreshTimeHint();
 
-    // ② 0:00跨ぎ検知（ローカル日付）
     const nowKey = formatYMD(new Date());
     if (nowKey !== todayKey) {
       const prevKey = todayKey;
       todayKey = nowKey;
 
-      // 「前日（=いま表示してた日）」を見てた時だけ翌日に自動ジャンプ
-      // ※ 過去日を見てる時に勝手に飛ばないためのガード
       if (currentDate === prevKey) {
         currentDate = nowKey;
-
-        loadDay(currentDate);
+        await loadDay(currentDate);
         renderWeekBar(currentDate);
         generateCalendar();
-
         showToast("日付が変わりました");
       }
     }
   }, 1000);
 }
 
-/* 時計タップ → ピッカーを開く準備だけ（フォーカス奪わない） */
+/* time picker */
 logTimeEl.addEventListener('pointerdown', () => {
-  // 空のままだと開きにくい端末対策：初回だけ now を入れる
   if (!logTimeEl.value) logTimeEl.value = nowHHMM();
-  // ここでは refreshTimeHint() しない（勝手に確定させない）
 }, { passive:true });
 
-/* 回してる最中：プレビュー表示だけ更新（確定しない） */
 logTimeEl.addEventListener('input', () => {
   tempTime = logTimeEl.value || '';
   if (tempTime) {
     timeHint.textContent = tempTime;
-    timeHint.className = 'isSet'; // 見た目はセットっぽくしてOK
+    timeHint.className = 'isSet';
   } else {
     refreshTimeHint();
   }
-
-  // ★ここで logInput.focus() しない！
-  // ★ここで timeMode を確定しない！
 }, { passive:true });
 
-/* ピッカーを閉じたタイミングで確定（iOSはblurが安定） */
-logTimeEl.addEventListener('blur', () => {
+function commitTimeFromPicker(){
   const raw = logTimeEl.value || '';
   const rounded = raw ? roundTimeToStep(raw, timeStepMin) : '';
-
-  logTimeEl.value = rounded;      // ピッカー値を丸め後に更新
-  selectedTime = rounded;
-  timeMode = selectedTime ? 'set' : 'auto';
-  tempTime = '';
-
-  refreshTimeHint();
-  expandInputBar();
-}, { passive:true });
-
-/* 念のため：changeでも確定（端末差） */
-logTimeEl.addEventListener('change', () => {
-  const raw = logTimeEl.value || '';
-  const rounded = raw ? roundTimeToStep(raw, timeStepMin) : '';
-
   logTimeEl.value = rounded;
   selectedTime = rounded;
   timeMode = selectedTime ? 'set' : 'auto';
   tempTime = '';
-
   refreshTimeHint();
   expandInputBar();
-}, { passive:true });
+}
+logTimeEl.addEventListener('blur', commitTimeFromPicker, { passive:true });
+logTimeEl.addEventListener('change', commitTimeFromPicker, { passive:true });
 
+logInput.addEventListener('focus', () => expandInputBar());
 
-/* --- フォーカスで展開（写真1） --- */
-logInput.addEventListener('focus', () => {
-  expandInputBar();
-});
-
-/* ✅ beforeinput/input：状態を“整える”だけ（保存はしない） */
-let isComposing = false;
-logInput.addEventListener('compositionstart', () => { isComposing = true; });
-logInput.addEventListener('compositionend',   () => { isComposing = false; });
-
-logInput.addEventListener('beforeinput', (e) => {
-  // 文字が入り始めたら展開を維持（iOSで効くこと多い）
+logInput.addEventListener('beforeinput', () => {
   if (!inputBar.classList.contains('expanded')) expandInputBar();
 });
 
-logInput.addEventListener('input', () => {
-  // ここでは保存しない。UI状態だけ。
-  // 例：複数行になってもOK（エントリーはそのまま保存ボタンで）
-});
+logInput.addEventListener('blur', () => setTimeout(() => collapseInputBar(), 80));
 
-/* ✅ blur：iOSの「☑️（完了）」→ blur になるので “写真2（通常）” に戻す
-   ※ テキストは消さない */
-logInput.addEventListener('blur', () => {
-  setTimeout(() => {
-    collapseInputBar();
-  }, 80);
-});
-
-/* 入力バー外タップで閉じる（テキストは残す） */
 document.addEventListener('pointerdown', (e) => {
   if (document.activeElement !== logInput) return;
   if (inputBar.contains(e.target)) return;
-  logInput.blur();            // blur側でcollapseされる
-  editingId = null;           // 編集解除だけ
+  logInput.blur();
+  editingId = null;
 }, { passive:true });
 
-/* Enterは改行（何もしない） */
-logInput.addEventListener('keydown', (e) => {
-  if (isComposing || e.isComposing || e.keyCode === 229) return;
-  // preventDefaultしない＝改行になる
-});
-
 /* =======================
-   Plus Sheet
+   Plus Sheet (inert only + focus restore)
 ======================= */
+const plusSheet = byId('plusSheet');
+const plusSheetBackdrop = byId('plusSheetBackdrop');
+const actPhoto = byId('actPhoto');
+const actCamera= byId('actCamera');
+const actFile  = byId('actFile');
+const actCancel= byId('actCancel');
+
+let lastFocusEl = null;
+
 function openPlusSheet(){
+  lastFocusEl = document.activeElement;
   plusSheet.classList.add('open');
-  plusSheet.setAttribute('aria-hidden','false');
+  plusSheet.removeAttribute('inert');
+  requestAnimationFrame(() => actPhoto?.focus({ preventScroll:true }));
 }
 function closePlusSheet(){
+  const ae = document.activeElement;
+  if (ae && plusSheet.contains(ae) && typeof ae.blur === 'function') ae.blur();
+  plusSheet.setAttribute('inert','');
   plusSheet.classList.remove('open');
-  plusSheet.setAttribute('aria-hidden','true');
+
+  const back = lastFocusEl || plusBtn;
+  requestAnimationFrame(() => back?.focus?.({ preventScroll:true }));
 }
+
 plusBtn.onclick = openPlusSheet;
 plusSheetBackdrop.onclick = closePlusSheet;
 actCancel.onclick = closePlusSheet;
@@ -1286,7 +1267,7 @@ actCamera.onclick= () => { closePlusSheet(); cameraEl.click(); };
 actFile.onclick  = () => { closePlusSheet(); fileInputEl.click(); };
 
 /* =======================
-   Attachments
+   Attachments (photo -> IDB)
 ======================= */
 function fileToDataURL(file){
   return new Promise((resolve,reject)=>{
@@ -1296,27 +1277,61 @@ function fileToDataURL(file){
     reader.readAsDataURL(file);
   });
 }
+async function imageFileToCompressedDataURL(file, maxSide = 1280, quality = 0.68){
+  const dataUrl = await fileToDataURL(file);
+  const img = new Image();
+  await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = dataUrl; });
+
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+
+  const scale = Math.min(1, maxSide / Math.max(w, h));
+  const nw = Math.round(w * scale);
+  const nh = Math.round(h * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = nw;
+  canvas.height = nh;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, nw, nh);
+
+  return canvas.toDataURL('image/jpeg', quality);
+}
 
 async function handleAttachment(file){
   if(!file) return;
 
-  pendingMime = file.type || '';
-  pendingName = file.name || '';
-  pendingDataUrl = await fileToDataURL(file);
-
   previewArea.innerHTML = '';
-  if (pendingMime.startsWith('image/')) {
+  setPreviewVisible(false);
+
+  pendingName = file.name || '';
+  pendingPhotoId = null;
+  revokePendingPhotoUrl();
+
+  if ((file.type || '').startsWith('image/')) {
+    const compressedDataUrl = await imageFileToCompressedDataURL(file, 1280, 0.68);
+    const blob = await dataUrlToBlob(compressedDataUrl);
+
+    const pid = "p_" + uid();
+    await idbPutPhoto({ id: pid, blob, mime: blob.type || 'image/jpeg', name: pendingName, createdAt: Date.now() });
+    pendingPhotoId = pid;
+
+    const url = URL.createObjectURL(blob);
+    pendingPhotoUrl = url;
+
     const img = document.createElement('img');
-    img.src = pendingDataUrl;
+    img.src = url;
     img.alt = 'attachment';
+
     previewArea.appendChild(img);
-  } else {
-    const div = document.createElement('div');
-    div.className = 'filePreview';
-    div.textContent = `📎 ${pendingName}`;
-    previewArea.appendChild(div);
+    setPreviewVisible(true);
+    expandInputBar();
+    logInput.focus();
+    return;
   }
 
+  // 非画像：容量事故を避けるため、内容保存はしない（名前だけ）
+  previewArea.innerHTML = `<div class="filePreview">📎 ${pendingName}</div>`;
   setPreviewVisible(true);
   expandInputBar();
   logInput.focus();
@@ -1330,87 +1345,91 @@ async function handleAttachment(file){
   });
 });
 
-/* 保存後のリセット時にpreview表示も戻すため（saveBtn側の最後に入れるのが理想）
-   すでにあなたのsaveBtn.onclick内で previewArea.innerHTML='' してるので、
-   その直後に setPreviewVisible(false); を足してね */
-
-
 /* =======================
-   Edit (B)
+   Edit
 ======================= */
-function beginEditEntry(entry){
+async function beginEditEntry(entry){
   editingId = entry.id;
 
   expandInputBar();
   logInput.value = entry.text || "";
 
   if (!entry.time) {
-  timeMode = 'auto';
-  selectedTime = '';
-  logTimeEl.value = '';
+    timeMode = 'auto';
+    selectedTime = '';
+    logTimeEl.value = '';
+  } else {
+    timeMode = 'set';
+    selectedTime = entry.time;
+    logTimeEl.value = entry.time;
+  }
   refreshTimeHint();
-} else {
-  timeMode = 'set';
-  selectedTime = entry.time;
-  logTimeEl.value = entry.time;
-  refreshTimeHint();
-}
 
-  // 添付保持（写真はDataURLが残る）
-  pendingDataUrl = entry.photo || null;
+  // 添付（写真はIDB）
   pendingName = entry.fileName || '';
-  pendingMime = entry.photo ? 'image/*' : (entry.fileName ? 'application/*' : '');
+  editingPrevPhotoId = entry.photoId || null;
+  pendingPhotoId = entry.photoId || null;
+  revokePendingPhotoUrl();
 
   previewArea.innerHTML = '';
-  if (pendingDataUrl && entry.photo) {
-    const img = document.createElement('img');
-    img.src = pendingDataUrl;
-    img.alt = 'attachment';
-    previewArea.appendChild(img);
-  } else if (pendingName) {
-    const div = document.createElement('div');
-    div.className = 'filePreview';
-    div.textContent = `📎 ${pendingName}`;
-    previewArea.appendChild(div);
-  }
 
-  previewArea.classList.remove('hasContent');
+  if (pendingPhotoId) {
+    const rec = await idbGetPhoto(pendingPhotoId);
+    if (rec && rec.blob) {
+      const url = URL.createObjectURL(rec.blob);
+      pendingPhotoUrl = url;
+
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = 'attachment';
+      previewArea.appendChild(img);
+      setPreviewVisible(true);
+    } else {
+      setPreviewVisible(false);
+    }
+  } else if (pendingName) {
+    previewArea.innerHTML = `<div class="filePreview">📎 ${pendingName}</div>`;
+    setPreviewVisible(true);
+  } else {
+    setPreviewVisible(false);
+  }
 
   setTimeout(()=>logInput.focus(), 0);
   showToast('編集モード');
 }
-
-function beginEditById(entryId){
+async function beginEditById(entryId){
   const dayData = getDayData(currentDate);
   const entry = (dayData.entries || []).find(e => e.id === entryId);
   if (!entry) { showToast('編集対象が見つからない…'); return; }
-  beginEditEntry(entry);
+  await beginEditEntry(entry);
 }
-
-
 
 /* =======================
    Save
 ======================= */
-saveBtn.onclick = () => {
+saveBtn.onclick = async () => {
   if (isSaving) return;
   isSaving = true;
 
   try {
+    // まずこの日を軽量化（念のため）
+    await migrateLegacyPhotosForDay(currentDate);
+
     const text = logInput.value.trim();
 
     let time = '';
-if (timeMode === 'set') {
-  time = time = roundTimeToStep(selectedTime, timeStepMin) || selectedTime;
-  selectedTime = time;
-  logTimeEl.value = time;
-} else if (timeMode === 'auto') {
-  time = nowHHMM();
-} else {
-  time = '';
-}
+    if (timeMode === 'set') {
+      time = roundTimeToStep(selectedTime, timeStepMin) || selectedTime || '';
+      selectedTime = time;
+      logTimeEl.value = time;
+      if (!time) timeMode = 'auto';
+    }
+    if (timeMode === 'auto') time = nowHHMM();
 
-    if (!text && !pendingDataUrl) {
+    const hasPhoto = !!pendingPhotoId;
+    const hasFileName = !!pendingName && !hasPhoto;
+
+    if (!text && !hasPhoto && !hasFileName) {
       collapseInputBar();
       logInput.blur();
       return;
@@ -1418,15 +1437,15 @@ if (timeMode === 'set') {
 
     const dayData = getDayData(currentDate);
 
-    const isImage = !!pendingDataUrl && String(pendingMime).startsWith('image/');
-    const hasFileName = !!pendingName && !isImage;
-
     const newPayload = {
       time,
-      text: text || (isImage ? '📷 写真' : (hasFileName ? `📎 ${pendingName}` : '')),
-      photo: isImage ? pendingDataUrl : null,
+      text: text || (hasPhoto ? '📷 写真' : (hasFileName ? `📎 ${pendingName}` : '')),
+      photoId: hasPhoto ? pendingPhotoId : null,
       fileName: hasFileName ? pendingName : null
     };
+
+    const prevId = editingPrevPhotoId;
+    const nextId = newPayload.photoId;
 
     if (editingId) {
       const idx = dayData.entries.findIndex(e => e.id === editingId);
@@ -1445,25 +1464,31 @@ if (timeMode === 'set') {
     sortEntries(dayData);
 
     const ok = window.saveDayData(currentDate, dayData);
-    if (!ok) return; // 失敗時は入力を残す
+    if (!ok) return;
 
-    loadDay(currentDate);
+    // 置換で旧写真が不要なら消す
+    if (prevId && prevId !== nextId) {
+      try { await idbDeletePhoto(prevId); } catch(e){ console.warn(e); }
+    }
+
+    await loadDay(currentDate);
 
     // reset
     editingId = null;
+    editingPrevPhotoId = null;
 
     logInput.value = '';
     previewArea.innerHTML = '';
     setPreviewVisible(false);
-    pendingDataUrl = null;
-    pendingMime = '';
+
     pendingName = '';
+    pendingPhotoId = null;
+    revokePendingPhotoUrl();
 
     timeMode = 'auto';
     selectedTime = '';
     logTimeEl.value = '';
     refreshTimeHint();
-    
 
     collapseInputBar();
     logInput.blur();
@@ -1474,36 +1499,36 @@ if (timeMode === 'set') {
 };
 
 /* =======================
-   Settings Modal
+   Settings Modal (inert only)
 ======================= */
 const settingsBtn = byId('settingsBtn');
 const settingsModal = byId('settingsModal');
 const closeSettings = byId('closeSettings');
 const settingsBackdrop = byId('settingsBackdrop');
 
+let lastFocusSettings = null;
+
 function openSettings(){
+  lastFocusSettings = document.activeElement;
   settingsModal.classList.add('open');
-  settingsModal.setAttribute('aria-hidden','false');
-
-  byId('closeSettings').focus(); // 最初のフォーカス
+  settingsModal.removeAttribute('inert');
+  requestAnimationFrame(() => closeSettings.focus({ preventScroll:true }));
 }
-
-
 function closeSettingsModal(){
+  const ae = document.activeElement;
+  if (ae && settingsModal.contains(ae) && typeof ae.blur === 'function') ae.blur();
 
-  // ★ まずフォーカスを安全な場所へ逃がす
-  settingsBtn.focus();   // 設定ボタンに戻すのが自然
-
+  settingsModal.setAttribute('inert','');
   settingsModal.classList.remove('open');
-  settingsModal.setAttribute('aria-hidden','true');
+
+  const back = lastFocusSettings || settingsBtn;
+  requestAnimationFrame(() => back?.focus?.({ preventScroll:true }));
 }
-
-
 settingsBtn.onclick = openSettings;
 closeSettings.onclick = closeSettingsModal;
 settingsBackdrop.onclick = closeSettingsModal;
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeSettingsModal();
+  if (e.key === 'Escape' && settingsModal.classList.contains('open')) closeSettingsModal();
 });
 
 /* export/import */
@@ -1519,26 +1544,46 @@ byId('exportLogday').onclick = () => {
   a.click();
 };
 
+/* 容量回復：全日付の「旧photo(dataURL)」をIDBに移す */
+async function cleanupAllLegacyPhotos(){
+  const dateKeyRe = /^\d{4}-\d{2}-\d{2}$/;
+  const keys = Object.keys(localStorage).filter(k => dateKeyRe.test(k));
 
+  let moved = 0;
+  let changedDays = 0;
+
+  for (const k of keys) {
+    const r = await migrateLegacyPhotosForDay(k);
+    if (r.changed) changedDays++;
+    moved += r.moved || 0;
+  }
+  showToast(`容量回復: ${changedDays}日 / 移行${moved}枚`);
+}
+
+const cleanupBtn = byId('cleanupStorage');
+if (cleanupBtn){
+  cleanupBtn.onclick = async () => {
+    if (!confirm('容量を回復するよ。\n「古い形式の写真(dataURL)」をIndexedDBへ移行して、保存エラーを直す。\n\n実行する？')) return;
+    await cleanupAllLegacyPhotos();
+  };
+}
+
+/* time step */
 const timeStepBtn = byId('timeStepBtn');
-
 function refreshTimeStepLabel(){
   if (!timeStepBtn) return;
   timeStepBtn.textContent = (timeStepMin === 1) ? '分刻み：1分' : '分刻み：10分';
 }
-
 if (timeStepBtn){
   refreshTimeStepLabel();
-
   timeStepBtn.onclick = () => {
-    // トグル式：10⇄1
     const next = (timeStepMin === 10) ? 1 : 10;
     setTimeStepMin(next);
     refreshTimeStepLabel();
   };
 }
 
-
+/* import */
 (() => {
   const input = byId('importFile');
   const handler = async () => {
@@ -1583,6 +1628,7 @@ showWeek();
 refreshTimeHint();
 startTimeTicker();
 applyTimeStepToUI(timeStepMin);
+openDB().catch(()=>{});
 </script>
 
 </body>
