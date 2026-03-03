@@ -7,9 +7,143 @@ function nowHHMM(){
   const d = new Date();
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+
 function uid(){
   return "e_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
 }
+
+
+function hhmmFromDate(d){
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/**
+ * JPEGのEXIF(DateTimeOriginal/DateTime)を読む（最低限実装）
+ * 取れなければ null
+ */
+function exifDateFromJpegArrayBuffer(buf){
+  const dv = new DataView(buf);
+  // JPEG SOI 0xFFD8
+  if (dv.getUint16(0, false) !== 0xFFD8) return null;
+
+  let offset = 2;
+  const len = dv.byteLength;
+
+  while (offset + 4 < len) {
+    if (dv.getUint8(offset) !== 0xFF) break;
+    const marker = dv.getUint8(offset + 1);
+    const size = dv.getUint16(offset + 2, false);
+
+    // APP1 (EXIF)
+    if (marker === 0xE1) {
+      const exifHeader = offset + 4;
+      // "Exif\0\0"
+      const isExif =
+        dv.getUint8(exifHeader) === 0x45 &&
+        dv.getUint8(exifHeader+1) === 0x78 &&
+        dv.getUint8(exifHeader+2) === 0x69 &&
+        dv.getUint8(exifHeader+3) === 0x66 &&
+        dv.getUint8(exifHeader+4) === 0x00 &&
+        dv.getUint8(exifHeader+5) === 0x00;
+
+      if (!isExif) return null;
+
+      const tiffStart = exifHeader + 6;
+      const endianMark = dv.getUint16(tiffStart, false);
+      const little = (endianMark === 0x4949); // "II"
+      const get16 = (p)=> dv.getUint16(p, little);
+      const get32 = (p)=> dv.getUint32(p, little);
+
+      // TIFF固定値 0x002A
+      if (get16(tiffStart + 2) !== 0x002A) return null;
+
+      const ifd0Offset = get32(tiffStart + 4);
+      let ifd0 = tiffStart + ifd0Offset;
+      if (ifd0 + 2 > len) return null;
+
+      const num0 = get16(ifd0);
+      let exifIFDPtr = null;
+
+      for (let i=0;i<num0;i++){
+        const ent = ifd0 + 2 + i*12;
+        const tag = get16(ent);
+        if (tag === 0x8769) { // ExifIFDPointer
+          exifIFDPtr = get32(ent + 8);
+          break;
+        }
+      }
+      if (exifIFDPtr == null) return null;
+
+      const exifIFD = tiffStart + exifIFDPtr;
+      if (exifIFD + 2 > len) return null;
+
+      const numE = get16(exifIFD);
+
+      const readAscii = (valueOffset, count) => {
+        const start = tiffStart + valueOffset;
+        if (start + count > len) return null;
+        let s = "";
+        for (let i=0;i<count;i++){
+          const c = dv.getUint8(start+i);
+          if (c === 0) break;
+          s += String.fromCharCode(c);
+        }
+        return s;
+      };
+
+      let dt = null;
+
+      for (let i=0;i<numE;i++){
+        const ent = exifIFD + 2 + i*12;
+        const tag = get16(ent);
+
+        // DateTimeOriginal(0x9003) / DateTime(0x0132)
+        if (tag === 0x9003 || tag === 0x0132) {
+          const type = get16(ent + 2); // 2=ASCII
+          const count = get32(ent + 4);
+          const valueOffset = get32(ent + 8);
+          if (type !== 2 || count < 10) continue;
+
+          const str = readAscii(valueOffset, count);
+          if (!str) continue;
+
+          // "YYYY:MM:DD HH:MM:SS"
+          const m = str.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+          if (!m) continue;
+
+          const y = +m[1], mo = +m[2]-1, da = +m[3], hh = +m[4], mm = +m[5], ss = +m[6];
+          dt = new Date(y, mo, da, hh, mm, ss);
+          break;
+        }
+      }
+      return dt;
+    }
+
+    // 次のセグメントへ
+    offset += 2 + size;
+  }
+
+  return null;
+}
+
+async function getShotDate(file){
+  // JPEGだけEXIFを読む（.jpg/.jpeg or image/jpeg）
+  const isJpeg = (file.type === 'image/jpeg') || /\.(jpe?g)$/i.test(file.name || '');
+  if (isJpeg) {
+    try{
+      const buf = await file.arrayBuffer();
+      const exifDate = exifDateFromJpegArrayBuffer(buf);
+      if (exifDate && !isNaN(exifDate.getTime())) return exifDate;
+    }catch(e){}
+  }
+  // フォールバック（HEICなど）
+  const lm = file.lastModified ? new Date(file.lastModified) : null;
+  if (lm && !isNaN(lm.getTime())) return lm;
+  return null;
+}
+
+
+
 function formatYMD(d){
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
@@ -204,7 +338,7 @@ function setTimeStepMin(v){
 let timeStepMin = getTimeStepMin();
 
 // attachments
-let pendingPhotos = []; // [{ id, url, name }]
+let pendingPhotos = []; // [{ id, url, name, shotAt, shotTime }]
 let pendingFileName = '';
 let editingPrevPhotoId = null; // 編集時の旧photoId（単一）
 
@@ -759,21 +893,37 @@ async function handleAttachment(input){
     grid.className = 'thumbGrid';
 
     for (const file of targets) {
-      const name = file.name || '';
-      const compressedDataUrl = await imageFileToCompressedDataURL(file, 1280, 0.68);
-      const blob = await dataUrlToBlob(compressedDataUrl);
+  const name = file.name || '';
 
-      const pid = "p_" + uid();
-      await idbPutPhoto({ id: pid, blob, mime: blob.type || 'image/jpeg', name, createdAt: Date.now() });
+  // ✅ 撮影日時（EXIF優先、無ければ lastModified）
+  const shotDate = await getShotDate(file);
+  const shotAt = shotDate ? shotDate.getTime() : Date.now();
+  const shotTime = shotDate ? hhmmFromDate(shotDate) : '';
 
-      const url = URL.createObjectURL(blob);
-      pendingPhotos.push({ id: pid, url, name });
+  const compressedDataUrl = await imageFileToCompressedDataURL(file, 1280, 0.68);
+  const blob = await dataUrlToBlob(compressedDataUrl);
 
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = 'attachment';
-      grid.appendChild(img);
-    }
+  const pid = "p_" + uid();
+
+  // ✅ createdAt に撮影日時を入れる（ソート安定にも効く）
+  await idbPutPhoto({
+    id: pid,
+    blob,
+    mime: blob.type || 'image/jpeg',
+    name,
+    createdAt: shotAt
+  });
+
+  const url = URL.createObjectURL(blob);
+
+  // ✅ pendingPhotos に shotAt/shotTime を保持
+  pendingPhotos.push({ id: pid, url, name, shotAt, shotTime });
+
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = 'attachment';
+  grid.appendChild(img);
+}
 
     previewArea.appendChild(grid);
 
@@ -931,15 +1081,16 @@ saveBtn.onclick = async () => {
       // 新規：複数写真ならまとめて追加
       if (hasPhoto) {
         for (const p of pendingPhotos) {
-          dayData.entries.push({
-            id: uid(),
-            createdAt: Date.now(),
-            time,
-            text: baseText || '📷 写真',
-            photoId: p.id,
-            fileName: null
-          });
-        }
+  const t = p.shotTime || time; // ✅ 写真の撮影時刻が取れたらそれを使う
+  dayData.entries.push({
+    id: uid(),
+    createdAt: p.shotAt || Date.now(), // ✅ 撮影日時
+    time: t,
+    text: baseText || '📷 写真',
+    photoId: p.id,
+    fileName: null
+  });
+}
         showToast(`${pendingPhotos.length}枚 保存しました`);
       } else {
         // 画像なし：従来通り1件
