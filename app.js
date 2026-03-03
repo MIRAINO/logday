@@ -203,17 +203,18 @@ function setTimeStepMin(v){
 }
 let timeStepMin = getTimeStepMin();
 
-// attachments: 写真はIDB, localStorageには入れない
-let pendingPhotoId = null;
-let pendingPhotoUrl = null;
-let pendingName = '';
-let editingPrevPhotoId = null;
+// attachments
+let pendingPhotos = []; // [{ id, url, name }]
+let pendingFileName = '';
+let editingPrevPhotoId = null; // 編集時の旧photoId（単一）
 
-function revokePendingPhotoUrl(){
-  if (pendingPhotoUrl) {
-    try { URL.revokeObjectURL(pendingPhotoUrl); } catch(e){}
-    pendingPhotoUrl = null;
+function revokePendingPhotoUrls(){
+  for (const p of pendingPhotos) {
+    if (p?.url) {
+      try { URL.revokeObjectURL(p.url); } catch(e){}
+    }
   }
+  pendingPhotos = [];
 }
 
 /* =======================
@@ -734,49 +735,73 @@ async function imageFileToCompressedDataURL(file, maxSide = 1280, quality = 0.68
   return canvas.toDataURL('image/jpeg', quality);
 }
 
-async function handleAttachment(file){
-  if(!file) return;
+async function handleAttachment(input){
+  // input: File か FileList(ArrayLike) を許容
+  const files = (input && input.length != null) ? Array.from(input) : (input ? [input] : []);
+  if (!files.length) return;
 
   previewArea.innerHTML = '';
   setPreviewVisible(false);
 
-  pendingName = file.name || '';
-  pendingPhotoId = null;
-  revokePendingPhotoUrl();
+  // reset
+  pendingFileName = '';
+  revokePendingPhotoUrls();
 
-  if ((file.type || '').startsWith('image/')) {
-    const compressedDataUrl = await imageFileToCompressedDataURL(file, 1280, 0.68);
-    const blob = await dataUrlToBlob(compressedDataUrl);
+  const images = files.filter(f => (f.type || '').startsWith('image/'));
+  const nonImages = files.filter(f => !(f.type || '').startsWith('image/'));
 
-    const pid = "p_" + uid();
-    await idbPutPhoto({ id: pid, blob, mime: blob.type || 'image/jpeg', name: pendingName, createdAt: Date.now() });
-    pendingPhotoId = pid;
+  // 画像がある場合：複数処理
+  if (images.length) {
+    // 編集中は “1枚だけ” に制限（編集のUX崩壊を避ける）
+    const targets = editingId ? [images[0]] : images;
 
-    const url = URL.createObjectURL(blob);
-    pendingPhotoUrl = url;
+    const grid = document.createElement('div');
+    grid.className = 'thumbGrid';
 
-    const img = document.createElement('img');
-    img.src = url;
-    img.alt = 'attachment';
+    for (const file of targets) {
+      const name = file.name || '';
+      const compressedDataUrl = await imageFileToCompressedDataURL(file, 1280, 0.68);
+      const blob = await dataUrlToBlob(compressedDataUrl);
 
-    previewArea.appendChild(img);
+      const pid = "p_" + uid();
+      await idbPutPhoto({ id: pid, blob, mime: blob.type || 'image/jpeg', name, createdAt: Date.now() });
+
+      const url = URL.createObjectURL(blob);
+      pendingPhotos.push({ id: pid, url, name });
+
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = 'attachment';
+      grid.appendChild(img);
+    }
+
+    previewArea.appendChild(grid);
+
+    const meta = document.createElement('div');
+    meta.className = 'thumbMeta';
+    meta.textContent = `${pendingPhotos.length}枚の写真を選択`;
+    previewArea.appendChild(meta);
+
     setPreviewVisible(true);
     expandInputBar();
     logInput.focus();
     return;
   }
 
-  // 非画像：容量事故を避けるため、内容保存はしない（名前だけ）
-  previewArea.innerHTML = `<div class="filePreview">📎 ${pendingName}</div>`;
-  setPreviewVisible(true);
-  expandInputBar();
-  logInput.focus();
+  // 非画像：従来通り（複数来たら先頭だけ扱う）
+  if (nonImages.length) {
+    pendingFileName = nonImages[0].name || '';
+    previewArea.innerHTML = `<div class="filePreview">📎 ${pendingFileName}</div>`;
+    setPreviewVisible(true);
+    expandInputBar();
+    logInput.focus();
+  }
 }
 
 [fileInputEl, photoEl, cameraEl].forEach(inp => {
   inp.addEventListener('change', (e) => {
-    const f = e.target.files && e.target.files[0];
-    handleAttachment(f);
+    const fl = e.target.files;
+    handleAttachment(fl);
     e.target.value = '';
   });
 });
@@ -848,7 +873,6 @@ saveBtn.onclick = async () => {
   isSaving = true;
 
   try {
-    // まずこの日を軽量化（念のため）
     await migrateLegacyPhotosForDay(currentDate);
 
     const text = logInput.value.trim();
@@ -862,8 +886,8 @@ saveBtn.onclick = async () => {
     }
     if (timeMode === 'auto') time = nowHHMM();
 
-    const hasPhoto = !!pendingPhotoId;
-    const hasFileName = !!pendingName && !hasPhoto;
+    const hasPhoto = pendingPhotos.length > 0;
+    const hasFileName = !!pendingFileName && !hasPhoto;
 
     if (!text && !hasPhoto && !hasFileName) {
       collapseInputBar();
@@ -873,17 +897,22 @@ saveBtn.onclick = async () => {
 
     const dayData = getDayData(currentDate);
 
-    const newPayload = {
-      time,
-      text: text || (hasPhoto ? '📷 写真' : (hasFileName ? `📎 ${pendingName}` : '')),
-      photoId: hasPhoto ? pendingPhotoId : null,
-      fileName: hasFileName ? pendingName : null
-    };
+    const baseText =
+      text || (hasPhoto ? '📷 写真' : (hasFileName ? `📎 ${pendingFileName}` : ''));
 
-    const prevId = editingPrevPhotoId;
-    const nextId = newPayload.photoId;
-
+    // --- ここから追加ロジック ---
     if (editingId) {
+      // 編集モードは1件更新（写真も1枚のみ運用）
+      const newPayload = {
+        time,
+        text: baseText,
+        photoId: hasPhoto ? pendingPhotos[0].id : null,
+        fileName: hasFileName ? pendingFileName : null
+      };
+
+      const prevId = editingPrevPhotoId;
+      const nextId = newPayload.photoId;
+
       const idx = dayData.entries.findIndex(e => e.id === editingId);
       if (idx >= 0) {
         dayData.entries[idx] = { ...dayData.entries[idx], ...newPayload };
@@ -892,20 +921,45 @@ saveBtn.onclick = async () => {
         dayData.entries.push({ id: uid(), createdAt: Date.now(), ...newPayload });
         showToast('追加しました');
       }
+
+      // 置換で旧写真が不要なら消す
+      if (prevId && prevId !== nextId) {
+        try { await idbDeletePhoto(prevId); } catch(e){ console.warn(e); }
+      }
+
     } else {
-      dayData.entries.push({ id: uid(), createdAt: Date.now(), ...newPayload });
-      showToast('保存しました');
+      // 新規：複数写真ならまとめて追加
+      if (hasPhoto) {
+        for (const p of pendingPhotos) {
+          dayData.entries.push({
+            id: uid(),
+            createdAt: Date.now(),
+            time,
+            text: baseText || '📷 写真',
+            photoId: p.id,
+            fileName: null
+          });
+        }
+        showToast(`${pendingPhotos.length}枚 保存しました`);
+      } else {
+        // 画像なし：従来通り1件
+        dayData.entries.push({
+          id: uid(),
+          createdAt: Date.now(),
+          time,
+          text: baseText,
+          photoId: null,
+          fileName: hasFileName ? pendingFileName : null
+        });
+        showToast('保存しました');
+      }
     }
+    // --- ここまで追加ロジック ---
 
     sortEntries(dayData);
 
     const ok = window.saveDayData(currentDate, dayData);
     if (!ok) return;
-
-    // 置換で旧写真が不要なら消す
-    if (prevId && prevId !== nextId) {
-      try { await idbDeletePhoto(prevId); } catch(e){ console.warn(e); }
-    }
 
     await loadDay(currentDate);
 
@@ -917,9 +971,8 @@ saveBtn.onclick = async () => {
     previewArea.innerHTML = '';
     setPreviewVisible(false);
 
-    pendingName = '';
-    pendingPhotoId = null;
-    revokePendingPhotoUrl();
+    pendingFileName = '';
+    revokePendingPhotoUrls(); // ← pendingPhotosのURLを全部revokeして pendingPhotosも空にする想定
 
     timeMode = 'auto';
     selectedTime = '';
