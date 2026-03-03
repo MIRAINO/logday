@@ -1182,6 +1182,7 @@ function openSettings(){
   settingsModal.removeAttribute('inert');
   requestAnimationFrame(() => closeSettings.focus({ preventScroll:true }));
 }
+
 function closeSettingsModal(){
   const ae = document.activeElement;
   if (ae && settingsModal.contains(ae) && typeof ae.blur === 'function') ae.blur();
