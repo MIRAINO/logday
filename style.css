@@ -1,11 +1,11 @@
 
   body{
-    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    padding:20px;
-    line-height:1.6;
-    background:#fafafa;
-    padding-bottom: 170px; /* InputBar のぶん */
-  }
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  padding:20px;
+  line-height:1.6;
+  background:#fafafa;
+  padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)); /* InputBar + safe area */
+}
 
   /* =======================
      Top (sticky)
@@ -161,21 +161,21 @@
      Input Bar (bottom)
   ======================= */
   #inputBar{
-    position:fixed;
-    left:0; right:0; bottom:0;
-    background:#fff;
-    border-top:1px solid #ddd;
-    padding:10px 12px;
+  position:fixed;
+  left:0; right:0; bottom:0;
+  background:#fff;
+  border-top:1px solid #ddd;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
 
-    display:flex;
-    flex-wrap:nowrap;
-    align-items:center;
-    gap:8px;
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:8px;
 
-    z-index:9999;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
-    max-height:320px;
-  }
+  z-index:9999;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+  max-height:320px;
+}
 
   #plusBtn{ flex:0 0 auto; }
   #timeHintWrap{ flex:0 0 auto; }
@@ -226,17 +226,18 @@
   }
 
   #inputBar.expanded{
-    flex-wrap:wrap;
-    margin: 0 12px 12px;
-    border-radius:16px;
-    border-top:none;
-    border:1px solid rgba(0,0,0,0.10);
-    padding:12px;
-    box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
-    transform: translateY(-2px);
-    background: rgba(255,255,255,0.98);
-    backdrop-filter: blur(10px);
-  }
+  flex-wrap:wrap;
+  margin: 0 12px 12px;
+  border-radius:16px;
+  border-top:none;
+  border:1px solid rgba(0,0,0,0.10);
+  padding:12px;
+  box-shadow: 0 -10px 26px rgba(0,0,0,0.18);
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.98);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
 
   #inputBar.expanded #logInput{
     flex:0 0 100%;
@@ -471,4 +472,3 @@
     opacity:1;
     transform:translateX(-50%) translateY(-4px);
   }
-
