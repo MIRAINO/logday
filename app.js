@@ -1060,9 +1060,11 @@ if (timeStepBtn){
 
       
 /* init */
-generateCalendar();
-showWeek();
-refreshTimeHint();
-startTimeTicker();
-applyTimeStepToUI(timeStepMin);
-openDB().catch(()=>{});
+(async () => {
+  generateCalendar();
+  await showWeek();            // ←ここが重要
+  refreshTimeHint();
+  startTimeTicker();
+  applyTimeStepToUI(timeStepMin);
+  openDB().catch(()=>{});
+})();
