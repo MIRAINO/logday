@@ -1025,31 +1025,39 @@
         grid.className = "thumbGrid";
 
         for (const file of targets) {
-          const name = file.name || "";
-          const shotDate = await getShotDate(file);
-          const shotAt = shotDate ? shotDate.getTime() : Date.now();
-          const shotTime = shotDate ? hhmmFromDate(shotDate) : "";
+  try {
+    const name = file.name || "";
+    const shotDate = await getShotDate(file);
+    const shotAt = shotDate ? shotDate.getTime() : Date.now();
+    const shotTime = shotDate ? hhmmFromDate(shotDate) : "";
 
-          const compressedDataUrl = await imageFileToCompressedDataURL(file, 1280, 0.68);
-          const blob = await PhotosDB.dataUrlToBlob(compressedDataUrl);
+    const compressedDataUrl = await imageFileToCompressedDataURL(file, 1280, 0.68);
+    const blob = await PhotosDB.dataUrlToBlob(compressedDataUrl);
 
-          const pid = "p_" + uid();
-          await PhotosDB.put({
-            id: pid,
-            blob,
-            mime: blob.type || "image/jpeg",
-            name,
-            createdAt: shotAt,
-          });
+    const pid = "p_" + uid();
+    await PhotosDB.put({
+      id: pid,
+      blob,
+      mime: blob.type || "image/jpeg",
+      name,
+      createdAt: shotAt,
+    });
 
-          const url = URL.createObjectURL(blob);
-          State.pendingPhotos.push({ id: pid, url, name, shotAt, shotTime });
+    const url = URL.createObjectURL(blob);
+    State.pendingPhotos.push({ id: pid, url, name, shotAt, shotTime });
 
-          const img = document.createElement("img");
-          img.src = url;
-          img.alt = "attachment";
-          grid.appendChild(img);
-        }
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "attachment";
+    grid.appendChild(img);
+  } catch (e) {
+    console.error("photo attach failed:", e);
+    Toast.show("写真の保存に失敗（ストレージ制限/プライベートモードの可能性）");
+    // ここで継続/中断どちらでもいい。まずは中断が安全：
+    return;
+  }
+}
+
 
         DOM.previewArea?.appendChild(grid);
 
@@ -1349,9 +1357,18 @@
       on(DOM.plusSheetBackdrop, "click", closePlusSheet);
       on(DOM.actCancel, "click", closePlusSheet);
 
-      on(DOM.actPhoto, "click", () => { closePlusSheet(); DOM.pickPhotoInput?.click(); });
-      on(DOM.actCamera, "click", () => { closePlusSheet(); DOM.takePhotoInput?.click(); });
-      on(DOM.actFile, "click", () => { closePlusSheet(); DOM.fileInput?.click(); });
+      on(DOM.actPhoto, "click", () => {
+  DOM.pickPhotoInput?.click();   // ←先
+  closePlusSheet();              // ←後
+});
+on(DOM.actCamera, "click", () => {
+  DOM.takePhotoInput?.click();
+  closePlusSheet();
+});
+on(DOM.actFile, "click", () => {
+  DOM.fileInput?.click();
+  closePlusSheet();
+});
 
       // attachment inputs
       [DOM.fileInput, DOM.pickPhotoInput, DOM.takePhotoInput].forEach((inp) => {
