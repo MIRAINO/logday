@@ -653,16 +653,20 @@
     }
 
     async function renderEntryPhoto(imgEl, photoId) {
-      try {
-        const rec = await PhotosDB.get(photoId);
-        if (!rec || !rec.blob) return;
-        const url = URL.createObjectURL(rec.blob);
-        imgEl.src = url;
-        imgEl.dataset.objurl = url;
-      } catch (e) {
-        console.warn("renderEntryPhoto failed:", e);
-      }
-    }
+  try {
+    const rec = await PhotosDB.get(photoId);
+    if (!rec || !rec.blob) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      imgEl.src = reader.result;
+    };
+    reader.readAsDataURL(rec.blob);
+
+  } catch (e) {
+    console.warn("photo render failed", e);
+  }
+}
 
     // Swipe constants
     const SWIPE_OPEN_X = -84;
