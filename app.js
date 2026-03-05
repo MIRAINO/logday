@@ -2,13 +2,12 @@
   "use strict";
 
   /* =========================================================
-    LOGDAY app.js (整理版 / 15日目)
-    - 役割ごとに分割：Utils / Storage / IDB / Calendar / Entries / Input / Modals / Settings / Init
-    - iOS/PWAで事故りやすい箇所を補強：
-      1) InputBarの実高さに合わせて body padding-bottom を動的更新
-      2) expanded時の “左右余白カード化” は CSS側で left/right/bottom を推奨（JSは高さだけ堅牢化）
-      3) ObjectURL を確実に revoke（メモリリーク防止）
-      4) swipe / click / edit の衝突を抑制
+    LOGDAY app.js (差し替え用・安定版)
+    - iPhone Safariで写真が出ない問題を最優先で潰す
+      * canvas.toBlob() でBlob直生成（dataURL fetchしない）
+      * IndexedDB失敗を握りつぶさず Toast + console へ
+    - モジュール分割は維持しつつ、循環参照を避けるため
+      “Appコールバック注入” 方式にして堅牢化
   ========================================================= */
 
   /* =======================
@@ -29,15 +28,10 @@
   };
   const hhmmFromDate = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
-  const formatYMD = (d) => {
-    const y = d.getFullYear();
-    const m = pad2(d.getMonth() + 1);
-    const day = pad2(d.getDate());
-    return `${y}-${m}-${day}`;
-  };
+  const formatYMD = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   const parseYMD = (str) => {
     const [y, m, d] = String(str).split("-").map(Number);
-    return new Date(y, m - 1, d);
+    return new Date(y, (m || 1) - 1, d || 1);
   };
 
   const timeToMinutes = (t) => {
@@ -73,14 +67,122 @@
       el.textContent = message;
       el.classList.add("show");
       clearTimeout(timer);
-      timer = setTimeout(() => el.classList.remove("show"), 1200);
+      timer = setTimeout(() => el.classList.remove("show"), 1400);
     }
     return { show };
   })();
 
   /* =======================
+     State
+  ======================= */
+  const State = {
+    viewMode: "week",
+    currentDate: formatYMD(new Date()),
+    todayKey: formatYMD(new Date()),
+
+    // time
+    timeMode: "auto", // auto | set
+    selectedTime: "",
+    tempTime: "",
+    timeTicker: null,
+
+    // edit/save
+    editingId: null,
+    editingPrevPhotoId: null,
+    isSaving: false,
+
+    // attachments
+    pendingPhotos: [], // [{ id, url, name, shotAt, shotTime }]
+    pendingFileName: "",
+
+    // swipe
+    openSwipeId: null,
+  };
+
+  function revokePendingPhotoUrls() {
+    for (const p of State.pendingPhotos) {
+      if (p?.url) {
+        try {
+          URL.revokeObjectURL(p.url);
+        } catch (_) {}
+      }
+    }
+    State.pendingPhotos = [];
+  }
+
+  /* =======================
+     DOM refs
+  ======================= */
+  const DOM = {
+    // header
+    navDate: $("navDate"),
+    toggleBtn: $("toggleBtn"),
+    calendar: $("calendar"),
+    weekBar: $("weekBar"),
+    topSticky: $("topSticky"),
+
+    // entries
+    entries: $("entries"),
+
+    // input
+    inputBar: $("inputBar"),
+    plusBtn: $("plusBtn"),
+    logInput: $("logInput"),
+    saveBtn: $("saveBtn"),
+    timeHint: $("timeHint"),
+    logTime: $("logTime"),
+    previewArea: $("previewArea"),
+    fileInput: $("fileInput"),
+    pickPhotoInput: $("pickPhotoInput"),
+    takePhotoInput: $("takePhotoInput"),
+
+    // plus sheet
+    plusSheet: $("plusSheet"),
+    plusSheetBackdrop: $("plusSheetBackdrop"),
+    actPhoto: $("actPhoto"),
+    actCamera: $("actCamera"),
+    actFile: $("actFile"),
+    actCancel: $("actCancel"),
+
+    // settings
+    settingsBtn: $("settingsBtn"),
+    settingsModal: $("settingsModal"),
+    settingsBackdrop: $("settingsBackdrop"),
+    closeSettings: $("closeSettings"),
+    exportLogday: $("exportLogday"),
+    cleanupStorage: $("cleanupStorage"),
+    timeStepBtn: $("timeStepBtn"),
+    importFile: $("importFile"),
+  };
+
+  /* =======================
+     Layout: body padding-bottom follow inputBar height
+  ======================= */
+  const Layout = (() => {
+    let raf = null;
+    function updateBodyPadding() {
+      if (!DOM.inputBar) return;
+      const h = DOM.inputBar.getBoundingClientRect().height || 0;
+      document.body.style.paddingBottom = `calc(${Math.ceil(h)}px + env(safe-area-inset-bottom, 0px))`;
+    }
+    function scheduleUpdate() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateBodyPadding);
+    }
+    function init() {
+      scheduleUpdate();
+      if ("ResizeObserver" in window && DOM.inputBar) {
+        const ro = new ResizeObserver(() => scheduleUpdate());
+        ro.observe(DOM.inputBar);
+      } else {
+        window.addEventListener("resize", scheduleUpdate, { passive: true });
+      }
+    }
+    return { init, scheduleUpdate };
+  })();
+
+  /* =======================
      Storage (localStorage)
-     - 1日単位で JSON 保存
   ======================= */
   const Storage = (() => {
     function saveDay(dateKey, dayData) {
@@ -90,7 +192,7 @@
       } catch (err) {
         console.error("saveDay failed:", err);
         if (err && String(err.name) === "QuotaExceededError") {
-          Toast.show("保存できなかった：容量オーバー（古い写真が残ってるかも）");
+          Toast.show("保存できなかった：容量オーバー（写真の整理が必要かも）");
         } else {
           Toast.show("保存できなかった…");
         }
@@ -101,7 +203,6 @@
     function getDay(dateKey) {
       const dayData = JSON.parse(localStorage.getItem(dateKey) || "{}");
       dayData.entries = dayData.entries || [];
-      // 互換のため補完
       for (const e of dayData.entries) {
         if (!e.id) e.id = uid();
         if (e.createdAt == null) e.createdAt = Date.now();
@@ -134,8 +235,7 @@
   })();
 
   /* =======================
-     EXIF (JPEG) minimal
-     - DateTimeOriginal / DateTime を読む（簡易）
+     EXIF minimal (JPEG only)
   ======================= */
   function exifDateFromJpegArrayBuffer(buf) {
     const dv = new DataView(buf);
@@ -204,7 +304,6 @@
         for (let i = 0; i < numE; i++) {
           const ent = exifIFD + 2 + i * 12;
           const tag = get16(ent);
-
           if (tag === 0x9003 || tag === 0x0132) {
             const type = get16(ent + 2);
             const count = get32(ent + 4);
@@ -217,13 +316,7 @@
             const m = str.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
             if (!m) continue;
 
-            const y = +m[1],
-              mo = +m[2] - 1,
-              da = +m[3],
-              hh = +m[4],
-              mm = +m[5],
-              ss = +m[6];
-            return new Date(y, mo, da, hh, mm, ss);
+            return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
           }
         }
         return null;
@@ -249,16 +342,20 @@
 
   /* =======================
      IndexedDB (photos)
-     - localStorage容量対策：写真はIDBへ
-     - IndexedDB = ブラウザ内のDB（localStorageより大容量）
   ======================= */
   const PhotosDB = (() => {
     const DB_NAME = "logday_db";
     const DB_VER = 1;
     let dbPromise = null;
 
+    function supported() {
+      return typeof indexedDB !== "undefined";
+    }
+
     function open() {
+      if (!supported()) return Promise.reject(new Error("indexedDB not supported"));
       if (dbPromise) return dbPromise;
+
       dbPromise = new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VER);
         req.onupgradeneeded = () => {
@@ -269,8 +366,9 @@
           }
         };
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(req.error || new Error("indexedDB open error"));
       });
+
       return dbPromise;
     }
 
@@ -279,7 +377,7 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction("photos", "readwrite");
         tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
+        tx.onerror = () => reject(tx.error || new Error("indexedDB tx error"));
         tx.objectStore("photos").put({ id, blob, mime, name, createdAt });
       });
     }
@@ -291,32 +389,27 @@
         const tx = db.transaction("photos", "readonly");
         const req = tx.objectStore("photos").get(id);
         req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => reject(req.error);
+        req.onerror = () => reject(req.error || new Error("indexedDB get error"));
       });
     }
 
     async function del(id) {
-      if (!id) return;
+      if (!id) return true;
       const db = await open();
       return new Promise((resolve, reject) => {
         const tx = db.transaction("photos", "readwrite");
         tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
+        tx.onerror = () => reject(tx.error || new Error("indexedDB delete error"));
         tx.objectStore("photos").delete(id);
       });
     }
 
-    async function dataUrlToBlob(dataUrl) {
-      const res = await fetch(dataUrl);
-      return await res.blob();
-    }
-
-    return { open, put, get, del, dataUrlToBlob };
+    return { open, put, get, del, supported };
   })();
 
   /* =======================
-     Legacy photo migration
-     - 旧形式：entry.photo に dataURL が入ってるのをIDBへ移す
+     Legacy photo migration (optional)
+     - entry.photo(dataURL) -> IDB photoId
   ======================= */
   async function migrateLegacyPhotosForDay(dateKey) {
     const dayData = Storage.getDay(dateKey);
@@ -329,7 +422,13 @@
       if (!needsMove) continue;
 
       try {
-        const blob = await PhotosDB.dataUrlToBlob(e.photo);
+        if (!PhotosDB.supported()) throw new Error("indexedDB not supported");
+        const blob = await (async () => {
+          // dataURL -> Blob（古い資産移行用）
+          const res = await fetch(e.photo);
+          return await res.blob();
+        })();
+
         const pid = "p_" + uid();
         await PhotosDB.put({
           id: pid,
@@ -338,13 +437,14 @@
           name: "photo.jpg",
           createdAt: e.createdAt || Date.now(),
         });
+
         e.photoId = pid;
         delete e.photo;
         moved++;
         changed = true;
       } catch (err) {
-        console.warn("legacy migrate failed", err);
-        delete e.photo; // 失敗してもサイズ爆発を止める
+        console.warn("legacy migrate failed:", err);
+        delete e.photo;
         changed = true;
       }
     }
@@ -354,149 +454,35 @@
   }
 
   /* =======================
-     App State
-  ======================= */
-  const State = {
-    viewMode: "week",
-    currentDate: formatYMD(new Date()),
-    todayKey: formatYMD(new Date()),
-
-    // time
-    timeMode: "auto", // auto | set
-    selectedTime: "",
-    tempTime: "",
-    timeTicker: null,
-
-    // edit/save
-    editingId: null,
-    editingPrevPhotoId: null,
-    isSaving: false,
-
-    // attachments (pending)
-    pendingPhotos: [], // [{ id, url, name, shotAt, shotTime }]
-    pendingFileName: "",
-
-    // swipe
-    openSwipeId: null,
-  };
-
-  function revokePendingPhotoUrls() {
-    for (const p of State.pendingPhotos) {
-      if (p?.url) {
-        try {
-          URL.revokeObjectURL(p.url);
-        } catch (_) {}
-      }
-    }
-    State.pendingPhotos = [];
-  }
-
-  /* =======================
-     DOM refs
-  ======================= */
-  const DOM = {
-    // header
-    navDate: $("navDate"),
-    toggleBtn: $("toggleBtn"),
-    calendar: $("calendar"),
-    weekBar: $("weekBar"),
-    topSticky: $("topSticky"),
-
-    // entries
-    entries: $("entries"),
-
-    // input
-    inputBar: $("inputBar"),
-    plusBtn: $("plusBtn"),
-    logInput: $("logInput"),
-    saveBtn: $("saveBtn"),
-    timeHint: $("timeHint"),
-    logTime: $("logTime"),
-    previewArea: $("previewArea"),
-    fileInput: $("fileInput"),
-    pickPhotoInput: $("pickPhotoInput"),
-    takePhotoInput: $("takePhotoInput"),
-
-    // plus sheet
-    plusSheet: $("plusSheet"),
-    plusSheetBackdrop: $("plusSheetBackdrop"),
-    actPhoto: $("actPhoto"),
-    actCamera: $("actCamera"),
-    actFile: $("actFile"),
-    actCancel: $("actCancel"),
-
-    // settings
-    settingsBtn: $("settingsBtn"),
-    settingsModal: $("settingsModal"),
-    settingsBackdrop: $("settingsBackdrop"),
-    closeSettings: $("closeSettings"),
-    exportLogday: $("exportLogday"),
-    cleanupStorage: $("cleanupStorage"),
-    timeStepBtn: $("timeStepBtn"),
-    importFile: $("importFile"),
-  };
-
-  /* =======================
-     Layout fix: body padding-bottom を InputBar 実高さに追従
-     - iOSで “下に隠れる” を潰す
-  ======================= */
-  const Layout = (() => {
-    let raf = null;
-
-    function updateBodyPadding() {
-      if (!DOM.inputBar) return;
-      const h = DOM.inputBar.getBoundingClientRect().height || 0;
-      // safe-area は CSS 側で加算済みなので、ここは “本体高さ” を入れるだけでもOK
-      document.body.style.paddingBottom = `calc(${Math.ceil(h)}px + env(safe-area-inset-bottom, 0px))`;
-    }
-
-    function scheduleUpdate() {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(updateBodyPadding);
-    }
-
-    function init() {
-      scheduleUpdate();
-      // 入力バーの状態変化（expanded）や画像プレビュー追加で高さが変わるので監視
-      if ("ResizeObserver" in window && DOM.inputBar) {
-        const ro = new ResizeObserver(() => scheduleUpdate());
-        ro.observe(DOM.inputBar);
-      } else {
-        // フォールバック（古い環境）：主要イベントで更新
-        window.addEventListener("resize", scheduleUpdate, { passive: true });
-      }
-    }
-
-    return { init, scheduleUpdate };
-  })();
-
-  /* =======================
-     Time step (1 or 10)
+     Time step
   ======================= */
   const TimeStep = (() => {
     const STEP_KEY = "logday_time_step_min";
     let stepMin = 10;
 
-    function get() {
+    function load() {
       const v = parseInt(localStorage.getItem(STEP_KEY) || "10", 10);
       return v === 1 || v === 10 ? v : 10;
     }
+
+    function render() {
+      if (!DOM.timeStepBtn) return;
+      DOM.timeStepBtn.textContent = stepMin === 1 ? "分刻み：1分" : "分刻み：10分";
+    }
+
     function set(v) {
       const step = v === 1 || v === 10 ? v : 10;
       localStorage.setItem(STEP_KEY, String(step));
       stepMin = step;
       if (DOM.logTime) DOM.logTime.step = String(stepMin * 60);
-      refreshLabel();
+      render();
       Toast.show(stepMin === 1 ? "分刻み：1分" : "分刻み：10分");
     }
-    function refreshLabel() {
-      if (!DOM.timeStepBtn) return;
-      DOM.timeStepBtn.textContent = stepMin === 1 ? "分刻み：1分" : "分刻み：10分";
-    }
+
     function init() {
-      stepMin = get();
+      stepMin = load();
       if (DOM.logTime) DOM.logTime.step = String(stepMin * 60);
-      refreshLabel();
+      render();
       on(DOM.timeStepBtn, "click", () => set(stepMin === 10 ? 1 : 10));
     }
 
@@ -504,7 +490,7 @@
   })();
 
   /* =======================
-     Header / Date
+     Header
   ======================= */
   const Header = (() => {
     function renderNavDate(dateStr) {
@@ -518,7 +504,6 @@
       if (!DOM.toggleBtn) return;
       DOM.toggleBtn.textContent = State.viewMode === "week" ? "月" : "週";
       DOM.toggleBtn.title = State.viewMode === "week" ? "月表示へ" : "週表示へ";
-      // 補助：押下状態（スクリーンリーダー向け）
       DOM.toggleBtn.setAttribute("aria-pressed", State.viewMode === "month" ? "true" : "false");
     }
 
@@ -534,15 +519,20 @@
   })();
 
   /* =======================
-     Calendar (week/month)
+     Calendar (callbacks injected)
   ======================= */
   const Calendar = (() => {
     const wnames = ["月", "火", "水", "木", "金", "土", "日"];
+    let onPickDate = null;
+
+    function injectCallbacks({ onPick }) {
+      onPickDate = onPick;
+    }
 
     function startOfWeek(dateStr) {
       const d = parseYMD(dateStr);
       const day = d.getDay(); // 0=日
-      const diff = day === 0 ? -6 : 1 - day; // 月曜始まり
+      const diff = day === 0 ? -6 : 1 - day; // Monday start
       d.setDate(d.getDate() + diff);
       return d;
     }
@@ -568,7 +558,7 @@
         btn.classList.toggle("active", ymd === State.currentDate);
         btn.onclick = async () => {
           State.currentDate = ymd;
-          await App.loadAndRender(State.currentDate);
+          onPickDate && onPickDate(ymd);
         };
         bar.appendChild(btn);
       }
@@ -586,7 +576,7 @@
 
       const firstDay = new Date(year, month, 1);
       const lastDate = new Date(year, month + 1, 0).getDate();
-      const blanks = (firstDay.getDay() + 6) % 7; // 月曜始まり補正
+      const blanks = (firstDay.getDay() + 6) % 7;
 
       for (let i = 0; i < blanks; i++) {
         const empty = document.createElement("button");
@@ -603,7 +593,7 @@
         btn.classList.toggle("active", dayStr === State.currentDate);
         btn.onclick = async () => {
           State.currentDate = dayStr;
-          await App.loadAndRender(State.currentDate);
+          onPickDate && onPickDate(dayStr);
         };
         cal.appendChild(btn);
       }
@@ -612,36 +602,47 @@
     async function showWeek() {
       State.viewMode = "week";
       DOM.calendar?.classList.add("hidden");
-      DOM.weekBar && (DOM.weekBar.style.display = "grid");
+      if (DOM.weekBar) DOM.weekBar.style.display = "grid";
       Header.updateToggleLabel();
       renderWeekBar(State.currentDate);
-      await App.loadAndRender(State.currentDate);
     }
 
     async function showMonth() {
       State.viewMode = "month";
       DOM.calendar?.classList.remove("hidden");
-      DOM.weekBar && (DOM.weekBar.style.display = "none");
+      if (DOM.weekBar) DOM.weekBar.style.display = "none";
       Header.updateToggleLabel();
       renderMonthCalendar();
-      await App.loadAndRender(State.currentDate);
     }
 
     function init() {
       on(DOM.toggleBtn, "click", () => {
         if (State.viewMode === "week") showMonth();
         else showWeek();
+        // 切替後の再描画
+        onPickDate && onPickDate(State.currentDate);
       });
     }
 
-    return { init, showWeek, showMonth, renderWeekBar, renderMonthCalendar };
+    return {
+      init,
+      injectCallbacks,
+      showWeek,
+      showMonth,
+      renderWeekBar,
+      renderMonthCalendar,
+    };
   })();
 
   /* =======================
-     Entries (render / swipe / delete / edit)
+     Entries (render / swipe / delete)
   ======================= */
   const Entries = (() => {
-    // ObjectURL cleanup（表示用URLの破棄）
+    let onEdit = null;
+    function injectCallbacks({ onEditById }) {
+      onEdit = onEditById;
+    }
+
     function cleanupEntryObjectUrls() {
       document.querySelectorAll("img.entryPhoto[data-objurl]").forEach((img) => {
         try {
@@ -659,11 +660,11 @@
         imgEl.src = url;
         imgEl.dataset.objurl = url;
       } catch (e) {
-        console.warn(e);
+        console.warn("renderEntryPhoto failed:", e);
       }
     }
 
-    /* ---- Swipe ---- */
+    // Swipe constants
     const SWIPE_OPEN_X = -84;
     const SWIPE_THRESHOLD = -42;
     const SWIPE_FULL_DELETE = -170;
@@ -675,7 +676,6 @@
       document.querySelectorAll(".entrySwipe.open").forEach((el) => el.classList.remove("open"));
       State.openSwipeId = null;
     }
-
     function closeOtherSwipes(keepId) {
       document.querySelectorAll(".entrySwipe.open").forEach((el) => {
         if (el.dataset.id !== keepId) el.classList.remove("open");
@@ -683,7 +683,7 @@
       State.openSwipeId = keepId;
     }
 
-    function attachSwipeHandlers(wrapEl, contentEl) {
+    function attachSwipeHandlers(wrapEl, contentEl, deleteFn) {
       wrapEl.addEventListener(
         "pointerdown",
         (e) => {
@@ -697,7 +697,6 @@
           swipeLock.currentX = 0;
 
           closeOtherSwipes(wrapEl.dataset.id);
-
           contentEl.style.transition = "none";
           wrapEl.setPointerCapture?.(e.pointerId);
         },
@@ -712,7 +711,6 @@
           const dx = e.clientX - swipeLock.startX;
           const dy = e.clientY - swipeLock.startY;
 
-          // 縦優勢ならスワイプ扱いを解除
           if (!swipeLock.moved && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 6) {
             swipeLock.active = false;
             contentEl.style.transition = "";
@@ -743,7 +741,6 @@
         contentEl.style.transition = "";
         const x = swipeLock.currentX;
 
-        // タップ（移動なし）なら open を閉じるだけ
         if (!swipeLock.moved) {
           if (wrapEl.classList.contains("open")) {
             wrapEl.classList.remove("open");
@@ -754,19 +751,17 @@
           return;
         }
 
-        // フルスワイプ削除
         if (x <= SWIPE_FULL_DELETE) {
           const kick = SWIPE_FULL_DELETE - 22;
           contentEl.style.transform = `translateX(${kick}px)`;
           setTimeout(() => {
             contentEl.style.transform = `translateX(${SWIPE_FULL_DELETE}px)`;
-            deleteEntryById(wrapEl.dataset.id, wrapEl);
+            deleteFn && deleteFn(wrapEl.dataset.id, wrapEl);
           }, 60);
           swipeLock.active = false;
           return;
         }
 
-        // 半開き
         if (x <= SWIPE_THRESHOLD) {
           wrapEl.classList.add("open");
           State.openSwipeId = wrapEl.dataset.id;
@@ -782,38 +777,6 @@
       wrapEl.addEventListener("pointercancel", finish, { passive: true });
     }
 
-    async function deleteEntryById(entryId, wrapEl) {
-      const dayData = Storage.getDay(State.currentDate);
-      const idx = dayData.entries.findIndex((e) => e.id === entryId);
-      if (idx < 0) return;
-
-      const photoId = dayData.entries[idx]?.photoId || null;
-      if (wrapEl) wrapEl.classList.add("removing");
-
-      setTimeout(async () => {
-        dayData.entries.splice(idx, 1);
-        Storage.sortEntries(dayData);
-
-        const ok = Storage.saveDay(State.currentDate, dayData);
-        if (!ok) {
-          if (wrapEl) wrapEl.classList.remove("removing");
-          return;
-        }
-
-        if (photoId) {
-          try {
-            await PhotosDB.del(photoId);
-          } catch (e) {
-            console.warn(e);
-          }
-        }
-
-        Toast.show("削除しました");
-        await App.loadAndRender(State.currentDate);
-      }, 120);
-    }
-
-    // 背景タップで open を閉じる
     document.addEventListener(
       "pointerdown",
       (e) => {
@@ -822,8 +785,7 @@
       { passive: true }
     );
 
-    /* ---- Render list ---- */
-    async function renderDay(dateStr) {
+    async function renderDay(dateStr, deleteFn) {
       await migrateLegacyPhotosForDay(dateStr);
 
       cleanupEntryObjectUrls();
@@ -851,7 +813,7 @@
           delBtn.innerHTML = `<span class="icon">🗑️</span><span class="label">削除</span>`;
           delBtn.onclick = (ev) => {
             ev.stopPropagation();
-            deleteEntryById(entry.id, wrap);
+            deleteFn && deleteFn(entry.id, wrap);
           };
           actions.appendChild(delBtn);
 
@@ -885,19 +847,16 @@
             content.appendChild(fileLine);
           }
 
-          attachSwipeHandlers(wrap, content);
+          attachSwipeHandlers(wrap, content, deleteFn);
 
           content.addEventListener("click", async () => {
-            // open中は閉じる優先
             if (wrap.classList.contains("open")) {
               wrap.classList.remove("open");
               State.openSwipeId = null;
               return;
             }
-            // スワイプ直後の誤クリック抑制
             if (swipeLock.moved) return;
-
-            await Input.beginEditById(entry.id);
+            onEdit && onEdit(entry.id);
           });
 
           wrap.appendChild(actions);
@@ -909,22 +868,31 @@
       }
     }
 
-    return { renderDay, cleanupEntryObjectUrls };
+    return { injectCallbacks, renderDay, cleanupEntryObjectUrls };
   })();
 
   /* =======================
-     Input (text/time/attachments/edit/save)
+     Input (photo fix for iOS Safari)
   ======================= */
   const Input = (() => {
-    // expanded UI
-    const expand = () => DOM.inputBar?.classList.add("expanded");
-    const collapse = () => DOM.inputBar?.classList.remove("expanded");
+    let onReload = null; // dateKey => reload
+    function injectCallbacks({ onReloadDate }) {
+      onReload = onReloadDate;
+    }
+
+    const expand = () => {
+      DOM.inputBar?.classList.add("expanded");
+      Layout.scheduleUpdate();
+    };
+    const collapse = () => {
+      DOM.inputBar?.classList.remove("expanded");
+      Layout.scheduleUpdate();
+    };
 
     function setPreviewVisible(onOff) {
       DOM.previewArea?.classList.toggle("hasContent", !!onOff);
     }
 
-    /* ---- time hint ---- */
     function refreshTimeHint() {
       if (!DOM.timeHint) return;
       if (State.timeMode === "set" && State.selectedTime) {
@@ -946,7 +914,6 @@
       State.tempTime = "";
       refreshTimeHint();
       expand();
-      Layout.scheduleUpdate();
     }
 
     function startTimeTicker() {
@@ -958,18 +925,16 @@
         if (nowKey !== State.todayKey) {
           const prevKey = State.todayKey;
           State.todayKey = nowKey;
-
-          // 表示しているのが昨日なら “今日へ切り替え”
           if (State.currentDate === prevKey) {
             State.currentDate = nowKey;
-            await App.loadAndRender(State.currentDate);
+            onReload && onReload(nowKey);
             Toast.show("日付が変わりました");
           }
         }
       }, 1000);
     }
 
-    /* ---- attachments ---- */
+    /* ---- file helpers ---- */
     const fileToDataURL = (file) =>
       new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -978,9 +943,9 @@
         reader.readAsDataURL(file);
       });
 
-    // 画像圧縮（Canvasで縮小→JPEG化）
-    async function imageFileToCompressedDataURL(file, maxSide = 1280, quality = 0.68) {
-      const dataUrl = await fileToDataURL(file);
+    // ✅ iOS Safari安定版：toBlobでBlobを直接作る
+    async function imageFileToCompressedBlob(file, maxSide = 1280, quality = 0.72) {
+      const dataUrl = await fileToDataURL(file); // FileReaderはSafariで安定
       const img = new Image();
       await new Promise((res, rej) => {
         img.onload = res;
@@ -992,51 +957,30 @@
       const h = img.naturalHeight || img.height;
 
       const scale = Math.min(1, maxSide / Math.max(w, h));
-      const nw = Math.round(w * scale);
-      const nh = Math.round(h * scale);
+      const nw = Math.max(1, Math.round(w * scale));
+      const nh = Math.max(1, Math.round(h * scale));
 
       const canvas = document.createElement("canvas");
       canvas.width = nw;
       canvas.height = nh;
+
       const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+
       ctx.drawImage(img, 0, 0, nw, nh);
 
-      return canvas.toDataURL("image/jpeg", quality);
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob((b) => resolve(b), "image/jpeg", quality);
+      });
+
+      return blob || null;
     }
-
-
-    async function imageFileToCompressedBlob(file, maxSide = 1280, quality = 0.68){
-  const dataUrl = await fileToDataURL(file); // ここは FileReader でOK
-  const img = new Image();
-  await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = dataUrl; });
-
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-
-  const scale = Math.min(1, maxSide / Math.max(w, h));
-  const nw = Math.round(w * scale);
-  const nh = Math.round(h * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = nw;
-  canvas.height = nh;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, nw, nh);
-
-  const blob = await new Promise((resolve) => {
-    // toBlob = dataURLを経由しないので iOS Safari で安定しやすい
-    canvas.toBlob((b) => resolve(b), "image/jpeg", quality);
-  });
-
-  return blob; // Blob（バイナリ）
-}
-
 
     async function handleAttachment(fileList) {
       const files = fileList ? Array.from(fileList) : [];
       if (!files.length) return;
 
-      DOM.previewArea && (DOM.previewArea.innerHTML = "");
+      if (DOM.previewArea) DOM.previewArea.innerHTML = "";
       setPreviewVisible(false);
 
       State.pendingFileName = "";
@@ -1045,50 +989,63 @@
       const images = files.filter((f) => (f.type || "").startsWith("image/"));
       const nonImages = files.filter((f) => !(f.type || "").startsWith("image/"));
 
-      // 画像
       if (images.length) {
-        const targets = State.editingId ? [images[0]] : images; // 編集中は1枚のみ扱う
+        // 編集中は1枚だけ
+        const targets = State.editingId ? [images[0]] : images;
+
+        // IndexedDBが死んでるなら先に教える
+        if (!PhotosDB.supported()) {
+          Toast.show("この環境では写真保存ができません（IndexedDB非対応）");
+          return;
+        }
+
+        // open確認（プライベート等で落ちる）
+        try {
+          await PhotosDB.open();
+        } catch (e) {
+          console.error("indexedDB open failed:", e);
+          Toast.show("写真が保存できません（プライベートモード/容量/設定の可能性）");
+          return;
+        }
 
         const grid = document.createElement("div");
         grid.className = "thumbGrid";
 
         for (const file of targets) {
-  try {
-    const name = file.name || "";
-    const shotDate = await getShotDate(file);
-    const shotAt = shotDate ? shotDate.getTime() : Date.now();
-    const shotTime = shotDate ? hhmmFromDate(shotDate) : "";
+          try {
+            const name = file.name || "";
+            const shotDate = await getShotDate(file);
+            const shotAt = shotDate ? shotDate.getTime() : Date.now();
+            const shotTime = shotDate ? hhmmFromDate(shotDate) : "";
 
-    const blob = await imageFileToCompressedBlob(file, 1280, 0.68);
-if (!blob) {
-  Toast.show("写真の変換に失敗…");
-  return;
-}
+            const blob = await imageFileToCompressedBlob(file, 1280, 0.72);
+            if (!blob) {
+              Toast.show("写真の変換に失敗…（対応形式/容量の可能性）");
+              return;
+            }
 
-    const pid = "p_" + uid();
-    await PhotosDB.put({
-      id: pid,
-      blob,
-      mime: blob.type || "image/jpeg",
-      name,
-      createdAt: shotAt,
-    });
+            const pid = "p_" + uid();
+            await PhotosDB.put({
+              id: pid,
+              blob,
+              mime: blob.type || "image/jpeg",
+              name,
+              createdAt: shotAt,
+            });
 
-    const url = URL.createObjectURL(blob);
-    State.pendingPhotos.push({ id: pid, url, name, shotAt, shotTime });
+            const url = URL.createObjectURL(blob);
+            State.pendingPhotos.push({ id: pid, url, name, shotAt, shotTime });
 
-    const img = document.createElement("img");
-    img.src = url;
-    img.alt = "attachment";
-    grid.appendChild(img);
-  } catch (e) {
-    console.error("photo attach failed:", e);
-    Toast.show("写真の保存に失敗（ストレージ制限/プライベートモードの可能性）");
-    // ここで継続/中断どちらでもいい。まずは中断が安全：
-    return;
-  }
-}
-
+            const img = document.createElement("img");
+            img.src = url;
+            img.alt = "attachment";
+            grid.appendChild(img);
+          } catch (e) {
+            console.error("photo attach failed:", e);
+            Toast.show("写真の保存に失敗（容量/プライベートモードの可能性）");
+            return;
+          }
+        }
 
         DOM.previewArea?.appendChild(grid);
 
@@ -1099,28 +1056,30 @@ if (!blob) {
 
         setPreviewVisible(true);
         expand();
-        Layout.scheduleUpdate();
         DOM.logInput?.focus?.();
         return;
       }
 
-      // 非画像（先頭1件）
       if (nonImages.length) {
         State.pendingFileName = nonImages[0].name || "";
         if (DOM.previewArea) DOM.previewArea.innerHTML = `<div class="filePreview">📎 ${State.pendingFileName}</div>`;
         setPreviewVisible(true);
         expand();
-        Layout.scheduleUpdate();
         DOM.logInput?.focus?.();
       }
     }
 
     /* ---- edit ---- */
-    async function beginEditEntry(entry) {
-      State.editingId = entry.id;
+    async function beginEditById(entryId) {
+      const dayData = Storage.getDay(State.currentDate);
+      const entry = (dayData.entries || []).find((e) => e.id === entryId);
+      if (!entry) {
+        Toast.show("編集対象が見つからない…");
+        return;
+      }
 
+      State.editingId = entry.id;
       expand();
-      Layout.scheduleUpdate();
 
       if (DOM.logInput) DOM.logInput.value = entry.text || "";
 
@@ -1142,56 +1101,49 @@ if (!blob) {
       if (DOM.previewArea) DOM.previewArea.innerHTML = "";
       setPreviewVisible(false);
 
-      // 既存写真のプレビュー表示（編集UI上）
+      // 既存写真のプレビュー
       if (entry.photoId) {
-        const rec = await PhotosDB.get(entry.photoId);
-        if (rec && rec.blob) {
-          const url = URL.createObjectURL(rec.blob);
-          State.pendingPhotos = [
-            {
-              id: entry.photoId,
-              url,
-              name: rec.name || "photo",
-              shotAt: rec.createdAt || (entry.createdAt ?? Date.now()),
-              shotTime: entry.time || "",
-            },
-          ];
+        try {
+          const rec = await PhotosDB.get(entry.photoId);
+          if (rec && rec.blob) {
+            const url = URL.createObjectURL(rec.blob);
+            State.pendingPhotos = [
+              {
+                id: entry.photoId,
+                url,
+                name: rec.name || "photo",
+                shotAt: rec.createdAt || (entry.createdAt ?? Date.now()),
+                shotTime: entry.time || "",
+              },
+            ];
 
-          const grid = document.createElement("div");
-          grid.className = "thumbGrid";
-          const img = document.createElement("img");
-          img.src = url;
-          img.alt = "attachment";
-          grid.appendChild(img);
-          DOM.previewArea?.appendChild(grid);
+            const grid = document.createElement("div");
+            grid.className = "thumbGrid";
+            const img = document.createElement("img");
+            img.src = url;
+            img.alt = "attachment";
+            grid.appendChild(img);
 
-          const meta = document.createElement("div");
-          meta.className = "thumbMeta";
-          meta.textContent = `編集中：写真 1枚`;
-          DOM.previewArea?.appendChild(meta);
+            DOM.previewArea?.appendChild(grid);
 
-          setPreviewVisible(true);
-          Layout.scheduleUpdate();
+            const meta = document.createElement("div");
+            meta.className = "thumbMeta";
+            meta.textContent = `編集中：写真 1枚`;
+            DOM.previewArea?.appendChild(meta);
+
+            setPreviewVisible(true);
+          }
+        } catch (e) {
+          console.warn("edit preview load failed:", e);
         }
       } else if (entry.fileName) {
         State.pendingFileName = entry.fileName || "";
         if (DOM.previewArea) DOM.previewArea.innerHTML = `<div class="filePreview">📎 ${State.pendingFileName}</div>`;
         setPreviewVisible(true);
-        Layout.scheduleUpdate();
       }
 
       setTimeout(() => DOM.logInput?.focus?.(), 0);
       Toast.show("編集モード");
-    }
-
-    async function beginEditById(entryId) {
-      const dayData = Storage.getDay(State.currentDate);
-      const entry = (dayData.entries || []).find((e) => e.id === entryId);
-      if (!entry) {
-        Toast.show("編集対象が見つからない…");
-        return;
-      }
-      await beginEditEntry(entry);
     }
 
     /* ---- save ---- */
@@ -1204,7 +1156,6 @@ if (!blob) {
 
         const text = (DOM.logInput?.value || "").trim();
 
-        // time
         let time = "";
         if (State.timeMode === "set") {
           time = roundTimeToStep(State.selectedTime, TimeStep.stepMin) || State.selectedTime || "";
@@ -1217,21 +1168,17 @@ if (!blob) {
         const hasPhoto = State.pendingPhotos.length > 0;
         const hasFileName = !!State.pendingFileName && !hasPhoto;
 
-        // 何もないなら閉じる
         if (!text && !hasPhoto && !hasFileName) {
           collapse();
-          Layout.scheduleUpdate();
           DOM.logInput?.blur?.();
           return;
         }
 
         const dayData = Storage.getDay(State.currentDate);
-
-        const baseText =
-          text || (hasPhoto ? "📷 写真" : hasFileName ? `📎 ${State.pendingFileName}` : "");
+        const baseText = text || (hasPhoto ? "📷 写真" : hasFileName ? `📎 ${State.pendingFileName}` : "");
 
         if (State.editingId) {
-          const nextPhotoId = hasPhoto ? State.pendingPhotos[0]?.id || null : State.editingPrevPhotoId || null;
+          const nextPhotoId = hasPhoto ? (State.pendingPhotos[0]?.id || null) : (State.editingPrevPhotoId || null);
 
           const newPayload = {
             time,
@@ -1252,14 +1199,10 @@ if (!blob) {
             Toast.show("追加しました");
           }
 
-          // 写真差し替えなら旧写真を削除
+          // 写真差し替え → 旧写真削除
           const replaced = !!prevId && !!nextId && prevId !== nextId;
           if (replaced) {
-            try {
-              await PhotosDB.del(prevId);
-            } catch (e) {
-              console.warn(e);
-            }
+            try { await PhotosDB.del(prevId); } catch (_) {}
           }
         } else {
           if (hasPhoto) {
@@ -1289,13 +1232,12 @@ if (!blob) {
         }
 
         Storage.sortEntries(dayData);
-
         const ok = Storage.saveDay(State.currentDate, dayData);
         if (!ok) return;
 
-        await App.loadAndRender(State.currentDate);
+        onReload && onReload(State.currentDate);
 
-        // reset UI state
+        // reset
         State.editingId = null;
         State.editingPrevPhotoId = null;
 
@@ -1312,23 +1254,22 @@ if (!blob) {
         refreshTimeHint();
 
         collapse();
-        Layout.scheduleUpdate();
         DOM.logInput?.blur?.();
       } finally {
-        setTimeout(() => {
-          State.isSaving = false;
-        }, 160);
+        setTimeout(() => { State.isSaving = false; }, 160);
       }
     }
 
     /* ---- plus sheet ---- */
     let lastFocusEl = null;
+
     function openPlusSheet() {
       lastFocusEl = document.activeElement;
       DOM.plusSheet?.classList.add("open");
       DOM.plusSheet?.removeAttribute("inert");
       requestAnimationFrame(() => DOM.actPhoto?.focus({ preventScroll: true }));
     }
+
     function closePlusSheet() {
       const ae = document.activeElement;
       if (ae && DOM.plusSheet && DOM.plusSheet.contains(ae) && typeof ae.blur === "function") ae.blur();
@@ -1339,17 +1280,12 @@ if (!blob) {
     }
 
     function bind() {
-      // expand/collapse
-      on(DOM.logInput, "focus", () => { expand(); Layout.scheduleUpdate(); });
+      on(DOM.logInput, "focus", expand);
       on(DOM.logInput, "beforeinput", () => {
-        if (DOM.inputBar && !DOM.inputBar.classList.contains("expanded")) {
-          expand();
-          Layout.scheduleUpdate();
-        }
+        if (DOM.inputBar && !DOM.inputBar.classList.contains("expanded")) expand();
       });
-      on(DOM.logInput, "blur", () => setTimeout(() => { collapse(); Layout.scheduleUpdate(); }, 80));
+      on(DOM.logInput, "blur", () => setTimeout(collapse, 80));
 
-      // 外側タップで blur
       document.addEventListener(
         "pointerdown",
         (e) => {
@@ -1362,20 +1298,28 @@ if (!blob) {
       );
 
       // time picker
-      on(DOM.logTime, "pointerdown", () => {
-        if (DOM.logTime && !DOM.logTime.value) DOM.logTime.value = nowHHMM();
-      }, { passive: true });
+      on(
+        DOM.logTime,
+        "pointerdown",
+        () => { if (DOM.logTime && !DOM.logTime.value) DOM.logTime.value = nowHHMM(); },
+        { passive: true }
+      );
 
-      on(DOM.logTime, "input", () => {
-        State.tempTime = DOM.logTime?.value || "";
-        if (!DOM.timeHint) return;
-        if (State.tempTime) {
-          DOM.timeHint.textContent = State.tempTime;
-          DOM.timeHint.className = "isSet";
-        } else {
-          refreshTimeHint();
-        }
-      }, { passive: true });
+      on(
+        DOM.logTime,
+        "input",
+        () => {
+          State.tempTime = DOM.logTime?.value || "";
+          if (!DOM.timeHint) return;
+          if (State.tempTime) {
+            DOM.timeHint.textContent = State.tempTime;
+            DOM.timeHint.className = "isSet";
+          } else {
+            refreshTimeHint();
+          }
+        },
+        { passive: true }
+      );
 
       on(DOM.logTime, "blur", commitTimeFromPicker, { passive: true });
       on(DOM.logTime, "change", commitTimeFromPicker, { passive: true });
@@ -1383,23 +1327,15 @@ if (!blob) {
       // save
       on(DOM.saveBtn, "click", save);
 
-      // plus sheet open/close
+      // plus sheet
       on(DOM.plusBtn, "click", openPlusSheet);
       on(DOM.plusSheetBackdrop, "click", closePlusSheet);
       on(DOM.actCancel, "click", closePlusSheet);
 
-      on(DOM.actPhoto, "click", () => {
-  DOM.pickPhotoInput?.click();   // ←先
-  closePlusSheet();              // ←後
-});
-on(DOM.actCamera, "click", () => {
-  DOM.takePhotoInput?.click();
-  closePlusSheet();
-});
-on(DOM.actFile, "click", () => {
-  DOM.fileInput?.click();
-  closePlusSheet();
-});
+      // ✅ iOS対策：click() を先、closeを後
+      on(DOM.actPhoto, "click", () => { DOM.pickPhotoInput?.click(); closePlusSheet(); });
+      on(DOM.actCamera, "click", () => { DOM.takePhotoInput?.click(); closePlusSheet(); });
+      on(DOM.actFile, "click", () => { DOM.fileInput?.click(); closePlusSheet(); });
 
       // attachment inputs
       [DOM.fileInput, DOM.pickPhotoInput, DOM.takePhotoInput].forEach((inp) => {
@@ -1411,11 +1347,17 @@ on(DOM.actFile, "click", () => {
       });
     }
 
-    return { bind, refreshTimeHint, startTimeTicker, beginEditById };
+    return {
+      injectCallbacks,
+      bind,
+      refreshTimeHint,
+      startTimeTicker,
+      beginEditById,
+    };
   })();
 
   /* =======================
-     Settings Modal / Export / Cleanup / Import
+     Settings
   ======================= */
   const Settings = (() => {
     let lastFocusEl = null;
@@ -1477,8 +1419,7 @@ on(DOM.actFile, "click", () => {
           !confirm(
             "容量を回復するよ。\n「古い形式の写真(dataURL)」をIndexedDBへ移行して、保存エラーを直す。\n\n実行する？"
           )
-        )
-          return;
+        ) return;
         await cleanupAllLegacyPhotos();
       });
     }
@@ -1532,46 +1473,88 @@ on(DOM.actFile, "click", () => {
      App orchestration
   ======================= */
   const App = (() => {
+    async function deleteEntryById(entryId, wrapEl) {
+      const dayData = Storage.getDay(State.currentDate);
+      const idx = (dayData.entries || []).findIndex((e) => e.id === entryId);
+      if (idx < 0) return;
+
+      const photoId = dayData.entries[idx]?.photoId || null;
+      if (wrapEl) wrapEl.classList.add("removing");
+
+      setTimeout(async () => {
+        dayData.entries.splice(idx, 1);
+        Storage.sortEntries(dayData);
+
+        const ok = Storage.saveDay(State.currentDate, dayData);
+        if (!ok) {
+          if (wrapEl) wrapEl.classList.remove("removing");
+          return;
+        }
+
+        if (photoId) {
+          try { await PhotosDB.del(photoId); } catch (_) {}
+        }
+
+        Toast.show("削除しました");
+        await loadAndRender(State.currentDate);
+      }, 120);
+    }
+
     async function loadAndRender(dateKey) {
-      // 日付UI更新
       Header.renderNavDate(dateKey);
 
-      // 表示モードに応じてUI更新
       if (State.viewMode === "week") Calendar.renderWeekBar(dateKey);
       else Calendar.renderMonthCalendar();
 
-      // Day描画
-      await Entries.renderDay(dateKey);
+      await Entries.renderDay(dateKey, deleteEntryById);
 
-      // レイアウト更新（入力バー高さ）
       Layout.scheduleUpdate();
     }
 
     async function init() {
-      // DB open（失敗しても致命ではない）
-      PhotosDB.open().catch(() => {});
+      // Callback injection（循環参照を完全に排除）
+      Calendar.injectCallbacks({
+        onPick: async (dateKey) => {
+          await loadAndRender(dateKey);
+        },
+      });
 
-      // Header shadow
+      Entries.injectCallbacks({
+        onEditById: async (entryId) => {
+          await Input.beginEditById(entryId);
+        },
+      });
+
+      Input.injectCallbacks({
+        onReloadDate: async (dateKey) => {
+          await loadAndRender(dateKey);
+        },
+      });
+
+      // DB open（失敗しても致命ではないが、写真機能は使えない）
+      try {
+        if (PhotosDB.supported()) await PhotosDB.open();
+      } catch (e) {
+        console.warn("IndexedDB unusable:", e);
+        // ここで強めに出す（iPhone Safariで原因が分からなくなるのを防ぐ）
+        Toast.show("写真保存が使えない状態（プライベート/容量/設定）");
+      }
+
       Header.initShadow();
-
-      // Calendar toggle
       Calendar.init();
 
-      // Input bind
       TimeStep.init();
       Input.bind();
       Input.refreshTimeHint();
       Input.startTimeTicker();
 
-      // Settings
       Settings.init();
 
-      // 初期表示：週
+      Layout.init();
+
+      // 初期表示
       await Calendar.showWeek();
       await loadAndRender(State.currentDate);
-
-      // 初回 body padding bottom
-      Layout.init();
     }
 
     return { init, loadAndRender };
