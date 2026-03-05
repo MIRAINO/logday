@@ -1059,8 +1059,11 @@
     const shotAt = shotDate ? shotDate.getTime() : Date.now();
     const shotTime = shotDate ? hhmmFromDate(shotDate) : "";
 
-    const compressedDataUrl = await imageFileToCompressedDataURL(file, 1280, 0.68);
-    const blob = await PhotosDB.dataUrlToBlob(compressedDataUrl);
+    const blob = await imageFileToCompressedBlob(file, 1280, 0.68);
+if (!blob) {
+  Toast.show("写真の変換に失敗…");
+  return;
+}
 
     const pid = "p_" + uid();
     await PhotosDB.put({
