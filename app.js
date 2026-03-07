@@ -1136,50 +1136,47 @@ async function getShotDate(file) {
   ctx.imageSmoothingQuality = "high";
 
   switch (orientation) {
-    case 2:
+    case 2: // horizontal flip
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       break;
-    case 3:
+
+    case 3: // 180
       ctx.translate(canvas.width, canvas.height);
       ctx.rotate(Math.PI);
       break;
-    case 4:
+
+    case 4: // vertical flip
       ctx.translate(0, canvas.height);
       ctx.scale(1, -1);
       break;
-    case 5:
+
+    case 5: // transpose
       ctx.rotate(0.5 * Math.PI);
       ctx.scale(1, -1);
-      ctx.drawImage(img, 0, -drawH, drawW, drawH);
       break;
-    case 6:
+
+    case 6: // 90 right
       ctx.rotate(0.5 * Math.PI);
       ctx.translate(0, -drawH);
-      ctx.drawImage(img, 0, 0, drawW, drawH);
       break;
-    case 7:
+
+    case 7: // transverse
       ctx.rotate(0.5 * Math.PI);
       ctx.translate(drawW, -drawH);
       ctx.scale(-1, 1);
-      ctx.drawImage(img, 0, 0, drawW, drawH);
       break;
-    case 8:
+
+    case 8: // 90 left
       ctx.rotate(-0.5 * Math.PI);
       ctx.translate(-drawW, 0);
-      ctx.drawImage(img, 0, 0, drawW, drawH);
       break;
+
     default:
-      ctx.drawImage(img, 0, 0, drawW, drawH);
       break;
   }
 
-  if (![5, 6, 7, 8].includes(orientation)) {
-    // default / mirrored / 180 / vertical flip は上で draw 済み分岐以外でここに来る
-    if ([2, 3, 4].includes(orientation)) {
-      ctx.drawImage(img, 0, 0, drawW, drawH);
-    }
-  }
+  ctx.drawImage(img, 0, 0, drawW, drawH);
 
   const blob = await new Promise((resolve) => {
     try {
@@ -1209,6 +1206,11 @@ async function getShotDate(file) {
         grid.className = "thumbGrid";
 
         for (const file of targets) {
+
+
+          console.log("photo type:", file.type, "name:", file.name);
+
+          
           try {
             const name = file.name || "";
             const shotDate = await getShotDate(file);
