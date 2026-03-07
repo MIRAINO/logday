@@ -140,6 +140,13 @@ option,
   font-size:.85em;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* 記録ありの日 */
+#calendar button.hasEntry{
+  background:#f2f2f2;
+}
+
+/* 選択中は最優先 */
 #calendar button.active{
   background:#111;
   color:#fff;
@@ -616,3 +623,8 @@ option,
 #toast.show{
   opacity:1;
 }
+
+このCSSでいい？
+更にここから進めていい？
+JSの差し替えもお願い
+薄グレーにしたい
