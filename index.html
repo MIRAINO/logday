@@ -56,10 +56,6 @@
   <input id="takePhotoInput" type="file" class="fileInput" accept="image/*" capture="environment">
 </div>
 
-<button id="addPhotoBtn" type="button">＋</button>
-<input id="photoInput" type="file" accept="image/*" multiple hidden>
-
-<!-- ✅ aria-hiddenは使わず、inertだけでフォーカス/アクセシビリティを安全に制御 -->
 <div id="plusSheet" inert>
   <div id="plusSheetBackdrop"></div>
   <div id="plusSheetPanel" role="dialog" aria-modal="true" aria-label="追加">
@@ -80,7 +76,7 @@
 
       <label class="ghostBtn" role="button">
         データを復元する
-        <input id="importFile" class="fileInput" type="file" accept="application/json" />
+        <input id="importFile" class="fileInput" type="file" accept="application/json">
       </label>
 
       <button id="closeSettings" class="ghostBtn" type="button">閉じる</button>
@@ -88,96 +84,8 @@
     </div>
   </div>
 </div>
-
-<div id="toast">保存しました</div>
-
-<script src="app.js"></script>
 
 <div id="toast"></div>
-
-</body>
-</html>
-  </div>
-</div>
-
-<div id="settingsModal" inert>
-  <div id="settingsBackdrop"></div>
-  <div id="settingsPanel" role="dialog" aria-modal="true" aria-label="設定">
-    <h3>設定</h3>
-    <div class="row">
-      <button id="exportLogday" class="ghostBtn" type="button">データを書き出す</button>
-      <button id="cleanupStorage" class="ghostBtn" type="button">容量を回復</button>
-
-      <label class="ghostBtn" role="button">
-        データを復元する
-        <input id="importFile" class="fileInput" type="file" accept="application/json" />
-      </label>
-
-      <button id="closeSettings" class="ghostBtn" type="button">閉じる</button>
-      <button id="timeStepBtn" class="ghostBtn" type="button">分刻み：10分</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast">保存しました</div>
-
-<script src="app.js"></script>
-
-<div id="toast"></div>
-
-</body>
-</html>
-  </div>
-</div>
-
-<div id="settingsModal" inert>
-  <div id="settingsBackdrop"></div>
-  <div id="settingsPanel" role="dialog" aria-modal="true" aria-label="設定">
-    <h3>設定</h3>
-    <div class="row">
-      <button id="exportLogday" class="ghostBtn" type="button">データを書き出す</button>
-      <button id="cleanupStorage" class="ghostBtn" type="button">容量を回復</button>
-
-      <label class="ghostBtn" role="button">
-        データを復元する
-        <input id="importFile" class="fileInput" type="file" accept="application/json" />
-      </label>
-
-      <button id="closeSettings" class="ghostBtn" type="button">閉じる</button>
-      <button id="timeStepBtn" class="ghostBtn" type="button">分刻み：10分</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast">保存しました</div>
-
-<script src="app.js"></script>
-
-</body>
-</html>
-  </div>
-</div>
-
-<div id="settingsModal" inert>
-  <div id="settingsBackdrop"></div>
-  <div id="settingsPanel" role="dialog" aria-modal="true" aria-label="設定">
-    <h3>設定</h3>
-    <div class="row">
-      <button id="exportLogday" class="ghostBtn" type="button">データを書き出す</button>
-      <button id="cleanupStorage" class="ghostBtn" type="button">容量を回復</button>
-
-      <label class="ghostBtn" role="button">
-        データを復元する
-        <input id="importFile" class="fileInput" type="file" accept="application/json" />
-      </label>
-
-      <button id="closeSettings" class="ghostBtn" type="button">閉じる</button>
-      <button id="timeStepBtn" class="ghostBtn" type="button">分刻み：10分</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast">保存しました</div>
 
 <script src="app.js"></script>
 
