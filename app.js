@@ -1,20 +1,9 @@
 (() => {
   "use strict";
 
-  /* =========================================================
-     LOGDAY app.js
-     - 複数写真1エントリー対応
-     - 旧データ自動移行
-     - Noteshelf用 直接PDF書き出し
-     - Safari写真選択 安定化対策
-  ========================================================= */
-
   const DATA_VERSION = 2;
   const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-  /* =======================
-     Global error -> Toast
-  ======================= */
   window.addEventListener("error", (e) => {
     console.error("GlobalError:", e.error || e.message);
     const t = document.getElementById("toast");
@@ -35,15 +24,9 @@
     }
   });
 
-  /* =======================
-     DOM helpers
-  ======================= */
   const $ = (id) => document.getElementById(id);
   const on = (el, ev, fn, opt) => el && el.addEventListener(ev, fn, opt);
 
-  /* =======================
-     Utils
-  ======================= */
   const pad2 = (n) => String(n).padStart(2, "0");
 
   const uid = () =>
@@ -108,9 +91,6 @@
       .replaceAll("'", "&#39;");
   }
 
-  /* =======================
-     Toast
-  ======================= */
   const Toast = (() => {
     const el = $("toast");
     let timer = null;
@@ -126,9 +106,6 @@
     return { show };
   })();
 
-  /* =======================
-     Storage
-  ======================= */
   const Storage = (() => {
     function normalizePhoto(raw, fallbackCreatedAt = Date.now()) {
       if (!raw) return null;
@@ -290,9 +267,6 @@
     };
   })();
 
-  /* =======================
-     EXIF
-  ======================= */
   function exifDateFromJpegArrayBuffer(buf) {
     const dv = new DataView(buf);
     if (dv.getUint16(0, false) !== 0xffd8) return null;
@@ -457,9 +431,6 @@
     return null;
   }
 
-  /* =======================
-     PhotosDB
-  ======================= */
   const PhotosDB = (() => {
     const DB_NAME = "logday_db";
     const DB_VER = 1;
@@ -541,9 +512,6 @@
     return { open, put, get, del, dataUrlToBlob, ping };
   })();
 
-  /* =======================
-     Legacy migrate
-  ======================= */
   async function migrateLegacyPhotosForDay(dateKey) {
     const dayData = Storage.getDay(dateKey);
     let changed = false;
@@ -593,9 +561,6 @@
     return { changed, moved };
   }
 
-  /* =======================
-     State / DOM refs
-  ======================= */
   const State = {
     viewMode: "week",
     currentDate: formatYMD(new Date()),
@@ -654,18 +619,13 @@
     importFile: $("importFile"),
   };
 
-  /* =======================
-     Layout
-  ======================= */
   const Layout = (() => {
     let raf = null;
 
     function updateBodyPadding() {
       if (!DOM.inputBar) return;
       const h = DOM.inputBar.getBoundingClientRect().height || 0;
-      document.body.style.paddingBottom = `calc(${Math.ceil(
-        h
-      )}px + env(safe-area-inset-bottom, 0px))`;
+      document.body.style.paddingBottom = `calc(${Math.ceil(h)}px + env(safe-area-inset-bottom, 0px))`;
     }
 
     function scheduleUpdate() {
@@ -686,9 +646,6 @@
     return { init, scheduleUpdate };
   })();
 
-  /* =======================
-     TimeStep
-  ======================= */
   const TimeStep = (() => {
     const STEP_KEY = "logday_time_step_min";
     let stepMin = 10;
@@ -709,8 +666,7 @@
 
     function refreshLabel() {
       if (!DOM.timeStepBtn) return;
-      DOM.timeStepBtn.textContent =
-        stepMin === 1 ? "分刻み：1分" : "分刻み：10分";
+      DOM.timeStepBtn.textContent = stepMin === 1 ? "分刻み：1分" : "分刻み：10分";
     }
 
     function init() {
@@ -728,9 +684,6 @@
     };
   })();
 
-  /* =======================
-     Header
-  ======================= */
   const Header = (() => {
     function renderNavDate(dateStr) {
       const d = parseYMD(dateStr);
@@ -747,10 +700,7 @@
       if (!DOM.toggleBtn) return;
       DOM.toggleBtn.textContent = State.viewMode === "week" ? "月" : "週";
       DOM.toggleBtn.title = State.viewMode === "week" ? "月表示へ" : "週表示へ";
-      DOM.toggleBtn.setAttribute(
-        "aria-pressed",
-        State.viewMode === "month" ? "true" : "false"
-      );
+      DOM.toggleBtn.setAttribute("aria-pressed", State.viewMode === "month" ? "true" : "false");
     }
 
     function initShadow() {
@@ -765,9 +715,6 @@
     return { renderNavDate, updateToggleLabel, initShadow };
   })();
 
-  /* =======================
-     Calendar
-  ======================= */
   const Calendar = (() => {
     const wnames = ["月", "火", "水", "木", "金", "土", "日"];
 
@@ -884,9 +831,6 @@
     };
   })();
 
-  /* =======================
-     Entries
-  ======================= */
   const Entries = (() => {
     async function renderPhotoThumb(photo) {
       const rec = await PhotosDB.get(photo.id);
@@ -909,9 +853,7 @@
     };
 
     function closeAllSwipes() {
-      document
-        .querySelectorAll(".entrySwipe.open")
-        .forEach((el) => el.classList.remove("open"));
+      document.querySelectorAll(".entrySwipe.open").forEach((el) => el.classList.remove("open"));
       State.openSwipeId = null;
     }
 
@@ -1160,9 +1102,6 @@
     return { renderDay };
   })();
 
-  /* =======================
-     Input
-  ======================= */
   const Input = (() => {
     const expand = () => DOM.inputBar?.classList.add("expanded");
     const collapse = () => DOM.inputBar?.classList.remove("expanded");
@@ -1783,9 +1722,6 @@
     return { bind, refreshTimeHint, startTimeTicker, beginEditById };
   })();
 
-  /* =======================
-     Noteshelf Export
-  ======================= */
   const NoteshelfExport = (() => {
     async function buildDayPayload(dateKey) {
       const day = Storage.getDay(dateKey);
@@ -2168,9 +2104,6 @@
     };
   })();
 
-  /* =======================
-     Settings
-  ======================= */
   const Settings = (() => {
     let lastFocusEl = null;
 
@@ -2316,9 +2249,6 @@
     return { init };
   })();
 
-  /* =======================
-     App
-  ======================= */
   const App = (() => {
     async function loadAndRender(dateKey) {
       Header.renderNavDate(dateKey);
@@ -2354,8 +2284,5 @@
     return { init, loadAndRender };
   })();
 
-  /* =======================
-     Boot
-  ======================= */
   App.init();
 })();
