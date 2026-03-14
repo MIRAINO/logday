@@ -1828,55 +1828,76 @@
     }
 
     async function buildDayHtml(dateKey) {
-      const payload = await buildDayPayload(dateKey);
-      const titleDate = parseYMD(dateKey).toLocaleDateString("ja-JP", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        weekday: "short",
-      });
+  const payload = await buildDayPayload(dateKey);
+  const titleDate = parseYMD(dateKey).toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
 
-      const entryHtml = payload.blocks
-        .map((b) => {
-          const photosHtml = (b.photos || [])
-            .map(
-              (p) => `
-                <div class="photoWrap">
-                  <img src="${p.dataUrl}" alt="${escapeHtml(p.name || "photo")}">
+  const entryHtml = payload.blocks
+    .map((b) => {
+      const hasPhotos = Array.isArray(b.photos) && b.photos.length > 0;
+
+      const photosHtml = (b.photos || [])
+        .map(
+          (p) => `
+            <div class="photoWrap">
+              <img src="${p.dataUrl}" alt="${escapeHtml(p.name || "photo")}">
+            </div>
+          `
+        )
+        .join("");
+
+      const filesHtml = (b.attachments || [])
+        .map((a) => `<div class="fileLine">📎 ${escapeHtml(a.name)}</div>`)
+        .join("");
+
+      return `
+        <section class="entry ${hasPhotos ? "hasPhoto" : ""}">
+          <div class="time">${escapeHtml(b.time || "•")}</div>
+
+          <div class="body">
+            <div class="text">${escapeHtml(b.text || "").replace(/\n/g, "<br>")}</div>
+
+            ${
+              hasPhotos
+                ? `
+                <div class="photoRow">
+                  <div class="memoCol">
+                    <div class="memoBox"></div>
+                  </div>
+                  <div class="photoCol">
+                    ${photosHtml}
+                  </div>
                 </div>
               `
-            )
-            .join("");
+                : ""
+            }
 
-          const filesHtml = (b.attachments || [])
-            .map((a) => `<div class="fileLine">📎 ${escapeHtml(a.name)}</div>`)
-            .join("");
+            ${filesHtml}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
 
-          return `
-            <section class="entry">
-              <div class="time">${escapeHtml(b.time || "•")}</div>
-              <div class="body">
-                <div class="text">${escapeHtml(b.text || "").replace(/\n/g, "<br>")}</div>
-                ${photosHtml ? `<div class="photos">${photosHtml}</div>` : ""}
-                ${filesHtml}
-              </div>
-            </section>
-          `;
-        })
-        .join("");
+  const summaryLines = new Array(payload.summarySpaceLines * 2)
+    .fill('<div class="summaryLine"></div>')
+    .join("");
 
-      const summaryLines = new Array(payload.summarySpaceLines)
-        .fill('<div class="summaryLine"></div>')
-        .join("");
-
-      return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LOGDAY Noteshelf ${escapeHtml(dateKey)}</title>
 <style>
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
+
   html, body {
     margin: 0;
     padding: 0;
@@ -1884,94 +1905,177 @@
     color: #fff;
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
   }
+
   body {
-    padding: 28px 22px 40px;
-    line-height: 1.65;
+    padding: 24px 18px 36px;
+    line-height: 1.75;
   }
+
   .page {
-    max-width: 900px;
+    width: 100%;
+    max-width: 1080px;
     margin: 0 auto;
+    min-height: 1800px;
   }
+
   .header {
     border-bottom: 1px solid rgba(255,255,255,0.18);
-    padding-bottom: 14px;
-    margin-bottom: 18px;
+    padding-bottom: 18px;
+    margin-bottom: 24px;
   }
+
   .title {
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    margin: 0 0 8px;
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    margin: 0 0 10px;
   }
+
   .sub {
-    font-size: 13px;
-    color: rgba(255,255,255,0.72);
+    font-size: 20px;
+    color: rgba(255,255,255,0.76);
   }
+
   .entry {
     display: grid;
-    grid-template-columns: 72px 1fr;
-    gap: 12px;
-    padding: 12px 0 14px;
+    grid-template-columns: 88px 1fr;
+    gap: 18px;
+    padding: 18px 0 22px;
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
+
   .time {
-    font-size: 14px;
+    font-size: 22px;
     font-weight: 700;
-    color: rgba(255,255,255,0.85);
-    padding-top: 2px;
+    color: rgba(255,255,255,0.88);
+    padding-top: 4px;
+    white-space: nowrap;
   }
+
   .body {
     min-width: 0;
   }
+
   .text {
-    white-space: normal;
+    font-size: 30px;
+    font-weight: 500;
+    line-height: 1.7;
     word-break: break-word;
-    font-size: 16px;
-    margin-bottom: 10px;
+    margin-bottom: 18px;
   }
-  .photos {
+
+  .photoRow {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 10px 0 6px;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 22px;
+    align-items: stretch;
+    margin-top: 10px;
   }
+
+  .memoCol {
+    min-height: 520px;
+  }
+
+  .memoBox {
+    width: 100%;
+    min-height: 520px;
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 46px,
+        rgba(255,255,255,0.12) 47px,
+        transparent 48px
+      );
+    border-radius: 12px;
+  }
+
+  .photoCol {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 16px;
+  }
+
   .photoWrap {
-    border-radius: 14px;
+    width: 100%;
+    max-width: 360px;
+    border-radius: 16px;
     overflow: hidden;
     background: #111;
     border: 1px solid rgba(255,255,255,0.08);
   }
+
   .photoWrap img {
     display: block;
     width: 100%;
     height: auto;
   }
+
   .fileLine {
-    font-size: 14px;
-    color: rgba(255,255,255,0.75);
-    margin-top: 6px;
+    font-size: 20px;
+    color: rgba(255,255,255,0.78);
+    margin-top: 8px;
   }
+
   .summary {
-    margin-top: 28px;
-    padding-top: 12px;
+    margin-top: 36px;
+    padding-top: 10px;
   }
+
   .summaryTitle {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 12px;
+    font-size: 30px;
+    font-weight: 800;
+    margin-bottom: 16px;
   }
+
   .summaryText {
-    min-height: 24px;
-    margin-bottom: 10px;
+    min-height: 48px;
+    margin-bottom: 14px;
+    font-size: 24px;
     color: rgba(255,255,255,0.96);
+    line-height: 1.7;
   }
+
+  .summaryLines {
+    min-height: 680px;
+  }
+
   .summaryLine {
-    height: 22px;
+    height: 40px;
     border-bottom: 1px solid rgba(255,255,255,0.14);
   }
+
   @media print {
-    body { padding: 16mm 14mm 18mm; }
-    .page { max-width: none; }
+    html, body {
+      width: 100%;
+      height: auto;
+      background: #000;
+    }
+
+    body {
+      padding: 10mm 10mm 12mm;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      max-width: none;
+      min-height: 0;
+    }
+
+    .photoWrap {
+      max-width: 320px;
+    }
+
+    .memoBox {
+      min-height: 480px;
+    }
+
+    .summaryLines {
+      min-height: 620px;
+    }
   }
 </style>
 </head>
@@ -1987,12 +2091,14 @@
     <section class="summary">
       <div class="summaryTitle">総括 / メモ</div>
       <div class="summaryText">${escapeHtml(payload.summary || "").replace(/\n/g, "<br>")}</div>
-      ${summaryLines}
+      <div class="summaryLines">
+        ${summaryLines}
+      </div>
     </section>
   </main>
 </body>
 </html>`;
-    }
+}
 
     async function downloadDayHtml(dateKey) {
       const html = await buildDayHtml(dateKey);
