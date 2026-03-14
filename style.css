@@ -1,70 +1,113 @@
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
-  -webkit-text-size-adjust:100%;
-  text-size-adjust:100%;
-  padding:20px;
-  line-height:1.6;
-  background:#fafafa;
-  padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px));
-  color:#111;
-}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width,
+                 initial-scale=1,
+                 maximum-scale=1,
+                 minimum-scale=1,
+                 user-scalable=no,
+                 viewport-fit=cover">
+  <title>LOGDAY</title>
 
-input,
-textarea,
-button,
-select,
-option,
-#navDate,
-#toggleBtn,
-#settingsBtn,
-.text,
-.entryContent,
-.sheetBtn,
-.ghostBtn{
-  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
-  font-style:normal;
-  font-weight:inherit;
-  color:inherit;
-}
+  <link rel="stylesheet" href="style.css">
+</head>
 
-/* =======================
-   Top (sticky)
-======================= */
-#topSticky{
-  position: sticky;
-  top: 0;
-  z-index: 16000;
+<body>
 
-  margin: -20px -20px 12px;
-  padding-top: env(safe-area-inset-top, 0px);
+  <div id="topSticky">
+    <div id="topInner">
+      <div id="nav">
+        <div id="navDate"></div>
+        <div id="navRight">
+          <button id="toggleBtn" class="iconOnly" type="button" title="表示切替">月</button>
+          <button id="settingsBtn" class="iconOnly" type="button" aria-label="設定" title="設定">⚙︎</button>
+        </div>
+      </div>
 
-  background:#fff;
-  border-bottom:1px solid #ddd;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-}
-#topSticky.isScrolled{
-  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
-}
+      <div id="calendar" class="hidden"></div>
+      <div id="weekBar"></div>
+    </div>
+  </div>
 
-#topInner{
-  padding: 10px 12px 12px;
-  max-width: 760px;
-  margin-left: auto;
-  margin-right: auto;
-}
+  <div id="meta">
+    <span id="weather"></span>
+    <div id="dayNote"></div>
+  </div>
 
-#nav{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px;
-  flex-wrap:nowrap;
-}
+  <div id="entries"></div>
 
-#navDate{
-  font-size:18px;
-  font-weight:600;
+  <div id="inputBar">
+    <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
+
+    <div id="timeHintWrap" title="時間">
+      <div id="timeHint" class="isAuto"></div>
+      <input id="logTime" type="time" class="timeOverlay" step="600">
+    </div>
+
+    <textarea id="logInput" placeholder="今日のひとこと…"></textarea>
+    <button id="saveBtn" type="button">保存</button>
+
+    <div id="previewArea"></div>
+
+    <input id="fileInput"
+           class="visuallyHiddenFile"
+           type="file"
+           accept="*/*">
+
+    <input id="pickPhotoInput"
+           class="visuallyHiddenFile"
+           type="file"
+           accept="image/*"
+           multiple>
+
+    <input id="takePhotoInput"
+           class="visuallyHiddenFile"
+           type="file"
+           accept="image/*"
+           capture="environment">
+  </div>
+
+  <div id="plusSheet" inert>
+    <div id="plusSheetBackdrop"></div>
+    <div id="plusSheetPanel" role="dialog" aria-modal="true" aria-label="追加">
+      <button class="sheetBtn" id="actPhoto" type="button">写真ライブラリ</button>
+      <button class="sheetBtn" id="actCamera" type="button">写真を撮る</button>
+      <button class="sheetBtn" id="actFile" type="button">ファイルを選択</button>
+      <button class="sheetBtn cancel" id="actCancel" type="button">キャンセル</button>
+    </div>
+  </div>
+
+  <div id="settingsModal" inert>
+    <div id="settingsBackdrop"></div>
+    <div id="settingsPanel" role="dialog" aria-modal="true" aria-label="設定">
+      <h3>設定</h3>
+
+      <div class="row">
+        <button id="exportLogday" class="ghostBtn" type="button">データを書き出す</button>
+        <button id="cleanupStorage" class="ghostBtn" type="button">容量を回復</button>
+
+        <label class="ghostBtn" role="button">
+          データを復元する
+          <input id="importFile" class="fileInput" type="file" accept="application/json">
+        </label>
+
+        <button id="exportNoteshelfPdf" type="button">Noteshelf用PDFを書き出し</button>
+        <button id="timeStepBtn" class="ghostBtn" type="button">分刻み：10分</button>
+        <button id="closeSettings" class="ghostBtn" type="button">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>  font-weight:600;
   color:#111;
   letter-spacing:.2px;
   user-select:none;
