@@ -3,15 +3,14 @@
 
   /* =========================================================
      LOGDAY app.js
-     Noteshelf対応版
-     - entryを複数写真対応へ変更
-     - saveDay / loadDay を新形式へ変更
-     - 写真保存を複数枚1エントリー方式へ変更
-     - Noteshelf用HTML書き出しを追加
+     - 複数写真1エントリー対応
+     - 旧データ自動移行
+     - Noteshelf用 直接PDF書き出し
+     - Safari写真選択 安定化対策
   ========================================================= */
 
   const DATA_VERSION = 2;
-  const NOTESHELF_EXPORT_VERSION = 1;
+  const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
   /* =======================
      Global error -> Toast
@@ -121,7 +120,7 @@
       el.textContent = message;
       el.classList.add("show");
       clearTimeout(timer);
-      timer = setTimeout(() => el.classList.remove("show"), 1300);
+      timer = setTimeout(() => el.classList.remove("show"), 1400);
     }
 
     return { show };
@@ -216,7 +215,7 @@
         noteshelf: {
           theme: "dark",
           textColor: "#FFFFFF",
-          summarySpaceLines: Number(day?.noteshelf?.summarySpaceLines || 6),
+          summarySpaceLines: Number(day?.noteshelf?.summarySpaceLines || 12),
         },
         entries: [],
       };
@@ -244,8 +243,7 @@
         normalized.date = dateKey;
         normalized.updatedAt = Date.now();
 
-        const payload = JSON.stringify(normalized);
-        localStorage.setItem(dateKey, payload);
+        localStorage.setItem(dateKey, JSON.stringify(normalized));
         return true;
       } catch (err) {
         console.error("saveDay failed:", err);
@@ -289,7 +287,6 @@
       sortEntries,
       exportAll,
       normalizeDay,
-      normalizeEntry,
     };
   })();
 
@@ -379,13 +376,7 @@
             );
             if (!m) continue;
 
-            const y = +m[1];
-            const mo = +m[2] - 1;
-            const da = +m[3];
-            const hh = +m[4];
-            const mm = +m[5];
-            const ss = +m[6];
-            return new Date(y, mo, da, hh, mm, ss);
+            return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
           }
         }
         return null;
@@ -406,7 +397,6 @@
 
     while (offset + 4 < len) {
       if (dv.getUint8(offset) !== 0xff) break;
-
       const marker = dv.getUint8(offset + 1);
       const size = dv.getUint16(offset + 2, false);
 
@@ -564,9 +554,8 @@
 
       const isLegacy =
         e && typeof e.photo === "string" && e.photo.startsWith("data:image/");
-      const needsMove = isLegacy;
 
-      if (!needsMove) continue;
+      if (!isLegacy) continue;
 
       try {
         const blob = await PhotosDB.dataUrlToBlob(e.photo);
@@ -659,7 +648,7 @@
     settingsBackdrop: $("settingsBackdrop"),
     closeSettings: $("closeSettings"),
     exportLogday: $("exportLogday"),
-    exportNoteshelf: $("exportNoteshelf"),
+    exportNoteshelfPdf: $("exportNoteshelfPdf"),
     cleanupStorage: $("cleanupStorage"),
     timeStepBtn: $("timeStepBtn"),
     importFile: $("importFile"),
@@ -850,7 +839,6 @@
 
         const saved = Storage.getDay(dayStr);
         if ((saved.entries || []).length > 0) btn.classList.add("hasEntry");
-
         btn.classList.toggle("active", dayStr === State.currentDate);
 
         btn.onclick = async () => {
@@ -1353,24 +1341,38 @@
       const nonImages = files.filter((f) => !(f.type || "").startsWith("image/"));
 
       if (images.length) {
+        const safeImages = IS_SAFARI ? images.slice(0, 1) : images;
+        if (IS_SAFARI && images.length > 1) {
+          Toast.show("Safariでは写真は1回1枚が安定");
+        }
+
         const grid = document.createElement("div");
         grid.className = "thumbGrid";
 
-        for (const file of images) {
+        for (const file of safeImages) {
           try {
             const name = file.name || "";
             const shotDate = await getShotDate(file);
             const shotAt = shotDate ? shotDate.getTime() : Date.now();
             const shotTime = shotDate ? hhmmFromDate(shotDate) : "";
 
+            const maxSide = IS_SAFARI ? 1280 : 1600;
+            const quality = IS_SAFARI ? 0.72 : 0.82;
+
             let blob = null;
             try {
-              blob = await imageFileToCompressedBlob(file, 1600, 0.82);
+              blob = await imageFileToCompressedBlob(file, maxSide, quality);
             } catch (_) {
               blob = null;
             }
 
-            if (!blob) blob = file;
+            if (!blob) {
+              try {
+                blob = await imageFileToCompressedBlob(file, 960, 0.68);
+              } catch (_) {
+                blob = file;
+              }
+            }
 
             const pid = "p_" + uid();
 
@@ -1403,7 +1405,12 @@
             grid.appendChild(img);
           } catch (e) {
             console.error("photo attach failed:", e);
-            Toast.show("写真の保存に失敗");
+            const msg = String(e && e.message ? e.message : e);
+            if (/IndexedDB|database|quota/i.test(msg)) {
+              Toast.show("写真保存失敗：Safariの保存制限の可能性");
+            } else {
+              Toast.show("写真の保存に失敗");
+            }
             break;
           }
         }
@@ -1750,18 +1757,18 @@
       on(DOM.actCancel, "click", closePlusSheet);
 
       on(DOM.actPhoto, "click", () => {
-        DOM.pickPhotoInput?.click();
         closePlusSheet();
+        setTimeout(() => DOM.pickPhotoInput?.click(), 30);
       });
 
       on(DOM.actCamera, "click", () => {
-        DOM.takePhotoInput?.click();
         closePlusSheet();
+        setTimeout(() => DOM.takePhotoInput?.click(), 30);
       });
 
       on(DOM.actFile, "click", () => {
-        DOM.fileInput?.click();
         closePlusSheet();
+        setTimeout(() => DOM.fileInput?.click(), 30);
       });
 
       [DOM.fileInput, DOM.pickPhotoInput, DOM.takePhotoInput].forEach((inp) => {
@@ -1785,13 +1792,16 @@
       Storage.sortEntries(day);
 
       const blocks = [];
+
       for (const entry of day.entries || []) {
         const photos = [];
+
         for (const p of entry.photos || []) {
           try {
             const rec = await PhotosDB.get(p.id);
             if (!rec || !rec.blob) continue;
             const dataUrl = await blobToDataURL(rec.blob);
+
             photos.push({
               id: p.id,
               name: p.name || rec.name || "",
@@ -1804,6 +1814,8 @@
           }
         }
 
+        photos.sort((a, b) => (a.shotAt || 0) - (b.shotAt || 0));
+
         blocks.push({
           kind: "entry",
           id: entry.id,
@@ -1815,305 +1827,344 @@
       }
 
       return {
-        schemaVersion: NOTESHELF_EXPORT_VERSION,
-        source: "LOGDAY",
-        target: "Noteshelf",
         date: dateKey,
-        theme: "dark",
-        textColor: "#FFFFFF",
         summary: day.summary || "",
-        summarySpaceLines: day?.noteshelf?.summarySpaceLines || 6,
+        summarySpaceLines: day?.noteshelf?.summarySpaceLines || 12,
         blocks,
       };
     }
 
-    async function buildDayHtml(dateKey) {
-  const payload = await buildDayPayload(dateKey);
-  const titleDate = parseYMD(dateKey).toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
+    function buildDayHtmlString(payload) {
+      const titleDate = parseYMD(payload.date).toLocaleDateString("ja-JP", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+      });
 
-  const entryHtml = payload.blocks
-    .map((b) => {
-      const hasPhotos = Array.isArray(b.photos) && b.photos.length > 0;
+      const entryHtml = payload.blocks
+        .map((b) => {
+          const hasPhotos = Array.isArray(b.photos) && b.photos.length > 0;
 
-      const photosHtml = (b.photos || [])
-        .map(
-          (p) => `
-            <div class="photoWrap">
-              <img src="${p.dataUrl}" alt="${escapeHtml(p.name || "photo")}">
-            </div>
-          `
-        )
+          const photosHtml = (b.photos || [])
+            .map(
+              (p) => `
+                <div class="photoWrap">
+                  <img src="${p.dataUrl}" alt="${escapeHtml(p.name || "photo")}">
+                </div>
+              `
+            )
+            .join("");
+
+          const filesHtml = (b.attachments || [])
+            .map((a) => `<div class="fileLine">📎 ${escapeHtml(a.name)}</div>`)
+            .join("");
+
+          return `
+            <section class="entry ${hasPhotos ? "hasPhoto" : ""}">
+              <div class="time">${escapeHtml(b.time || "•")}</div>
+              <div class="body">
+                <div class="text">${escapeHtml(b.text || "").replace(/\n/g, "<br>")}</div>
+                ${
+                  hasPhotos
+                    ? `
+                      <div class="photoRow">
+                        <div class="memoCol">
+                          <div class="memoBox"></div>
+                        </div>
+                        <div class="photoCol">
+                          ${photosHtml}
+                        </div>
+                      </div>
+                    `
+                    : ""
+                }
+                ${filesHtml}
+              </div>
+            </section>
+          `;
+        })
         .join("");
 
-      const filesHtml = (b.attachments || [])
-        .map((a) => `<div class="fileLine">📎 ${escapeHtml(a.name)}</div>`)
+      const summaryLines = new Array(payload.summarySpaceLines)
+        .fill('<div class="summaryLine"></div>')
         .join("");
 
       return `
-        <section class="entry ${hasPhotos ? "hasPhoto" : ""}">
-          <div class="time">${escapeHtml(b.time || "•")}</div>
+        <div id="noteshelfPdfPage" class="pdfPage">
+          <div class="page">
+            <header class="header">
+              <h1 class="title">LOGDAY</h1>
+              <div class="sub">${escapeHtml(titleDate)}</div>
+            </header>
 
-          <div class="body">
-            <div class="text">${escapeHtml(b.text || "").replace(/\n/g, "<br>")}</div>
+            ${entryHtml || '<div class="sub">この日はまだ記録がありません</div>'}
 
-            ${
-              hasPhotos
-                ? `
-                <div class="photoRow">
-                  <div class="memoCol">
-                    <div class="memoBox"></div>
-                  </div>
-                  <div class="photoCol">
-                    ${photosHtml}
-                  </div>
-                </div>
-              `
-                : ""
-            }
-
-            ${filesHtml}
+            <section class="summary">
+              <div class="summaryTitle">総括 / メモ</div>
+              <div class="summaryText">${escapeHtml(payload.summary || "").replace(/\n/g, "<br>")}</div>
+              <div class="summaryLines">${summaryLines}</div>
+            </section>
           </div>
-        </section>
+        </div>
       `;
-    })
-    .join("");
-
-  const summaryLines = new Array(payload.summarySpaceLines * 2)
-    .fill('<div class="summaryLine"></div>')
-    .join("");
-
-  return `<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LOGDAY Noteshelf ${escapeHtml(dateKey)}</title>
-<style>
-  * {
-    box-sizing: border-box;
-  }
-
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: #000;
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-  }
-
-  body {
-    padding: 24px 18px 36px;
-    line-height: 1.75;
-  }
-
-  .page {
-    width: 100%;
-    max-width: 1080px;
-    margin: 0 auto;
-    min-height: 1800px;
-  }
-
-  .header {
-    border-bottom: 1px solid rgba(255,255,255,0.18);
-    padding-bottom: 18px;
-    margin-bottom: 24px;
-  }
-
-  .title {
-    font-size: 42px;
-    font-weight: 800;
-    letter-spacing: 0.03em;
-    margin: 0 0 10px;
-  }
-
-  .sub {
-    font-size: 20px;
-    color: rgba(255,255,255,0.76);
-  }
-
-  .entry {
-    display: grid;
-    grid-template-columns: 88px 1fr;
-    gap: 18px;
-    padding: 18px 0 22px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .time {
-    font-size: 22px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.88);
-    padding-top: 4px;
-    white-space: nowrap;
-  }
-
-  .body {
-    min-width: 0;
-  }
-
-  .text {
-    font-size: 30px;
-    font-weight: 500;
-    line-height: 1.7;
-    word-break: break-word;
-    margin-bottom: 18px;
-  }
-
-  .photoRow {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 22px;
-    align-items: stretch;
-    margin-top: 10px;
-  }
-
-  .memoCol {
-    min-height: 520px;
-  }
-
-  .memoBox {
-    width: 100%;
-    min-height: 520px;
-    border-bottom: 1px solid rgba(255,255,255,0.10);
-    background:
-      repeating-linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent 46px,
-        rgba(255,255,255,0.12) 47px,
-        transparent 48px
-      );
-    border-radius: 12px;
-  }
-
-  .photoCol {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 16px;
-  }
-
-  .photoWrap {
-    width: 100%;
-    max-width: 360px;
-    border-radius: 16px;
-    overflow: hidden;
-    background: #111;
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .photoWrap img {
-    display: block;
-    width: 100%;
-    height: auto;
-  }
-
-  .fileLine {
-    font-size: 20px;
-    color: rgba(255,255,255,0.78);
-    margin-top: 8px;
-  }
-
-  .summary {
-    margin-top: 36px;
-    padding-top: 10px;
-  }
-
-  .summaryTitle {
-    font-size: 30px;
-    font-weight: 800;
-    margin-bottom: 16px;
-  }
-
-  .summaryText {
-    min-height: 48px;
-    margin-bottom: 14px;
-    font-size: 24px;
-    color: rgba(255,255,255,0.96);
-    line-height: 1.7;
-  }
-
-  .summaryLines {
-    min-height: 680px;
-  }
-
-  .summaryLine {
-    height: 40px;
-    border-bottom: 1px solid rgba(255,255,255,0.14);
-  }
-
-  @media print {
-    html, body {
-      width: 100%;
-      height: auto;
-      background: #000;
     }
 
-    body {
-      padding: 10mm 10mm 12mm;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+    function ensureExportRoot() {
+      let root = document.getElementById("pdfExportRoot");
+      if (!root) {
+        root = document.createElement("div");
+        root.id = "pdfExportRoot";
+        root.style.position = "fixed";
+        root.style.left = "-100000px";
+        root.style.top = "0";
+        root.style.width = "1240px";
+        root.style.zIndex = "-1";
+        document.body.appendChild(root);
+      }
+      return root;
     }
 
-    .page {
-      max-width: none;
-      min-height: 0;
+    function injectExportStyle() {
+      if (document.getElementById("noteshelfPdfStyle")) return;
+
+      const style = document.createElement("style");
+      style.id = "noteshelfPdfStyle";
+      style.textContent = `
+        .pdfPage {
+          width: 1240px;
+          background: #000;
+          color: #fff;
+          font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+          padding: 36px 28px 44px;
+          box-sizing: border-box;
+        }
+
+        .pdfPage * {
+          box-sizing: border-box;
+        }
+
+        .pdfPage .page {
+          width: 100%;
+          min-height: 1754px;
+        }
+
+        .pdfPage .header {
+          border-bottom: 1px solid rgba(255,255,255,0.18);
+          padding-bottom: 18px;
+          margin-bottom: 24px;
+        }
+
+        .pdfPage .title {
+          font-size: 42px;
+          font-weight: 800;
+          margin: 0 0 10px;
+          letter-spacing: 0.03em;
+        }
+
+        .pdfPage .sub {
+          font-size: 20px;
+          color: rgba(255,255,255,0.76);
+        }
+
+        .pdfPage .entry {
+          display: grid;
+          grid-template-columns: 88px 1fr;
+          gap: 18px;
+          padding: 18px 0 22px;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .pdfPage .time {
+          font-size: 22px;
+          font-weight: 700;
+          color: rgba(255,255,255,0.88);
+          padding-top: 4px;
+          white-space: nowrap;
+        }
+
+        .pdfPage .body {
+          min-width: 0;
+        }
+
+        .pdfPage .text {
+          font-size: 30px;
+          font-weight: 500;
+          line-height: 1.7;
+          word-break: break-word;
+          margin-bottom: 18px;
+        }
+
+        .pdfPage .photoRow {
+          display: grid;
+          grid-template-columns: 1.45fr 1fr;
+          gap: 22px;
+          align-items: stretch;
+          margin-top: 10px;
+        }
+
+        .pdfPage .memoCol {
+          min-height: 520px;
+        }
+
+        .pdfPage .memoBox {
+          width: 100%;
+          min-height: 520px;
+          border-radius: 12px;
+          background:
+            repeating-linear-gradient(
+              to bottom,
+              transparent 0,
+              transparent 46px,
+              rgba(255,255,255,0.12) 47px,
+              transparent 48px
+            );
+        }
+
+        .pdfPage .photoCol {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 16px;
+        }
+
+        .pdfPage .photoWrap {
+          width: 100%;
+          max-width: 360px;
+          border-radius: 16px;
+          overflow: hidden;
+          background: #111;
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .pdfPage .photoWrap img {
+          display: block;
+          width: 100%;
+          height: auto;
+        }
+
+        .pdfPage .fileLine {
+          font-size: 20px;
+          color: rgba(255,255,255,0.78);
+          margin-top: 8px;
+        }
+
+        .pdfPage .summary {
+          margin-top: 36px;
+          padding-top: 10px;
+        }
+
+        .pdfPage .summaryTitle {
+          font-size: 30px;
+          font-weight: 800;
+          margin-bottom: 16px;
+        }
+
+        .pdfPage .summaryText {
+          min-height: 48px;
+          margin-bottom: 14px;
+          font-size: 24px;
+          color: rgba(255,255,255,0.96);
+          line-height: 1.7;
+        }
+
+        .pdfPage .summaryLines {
+          min-height: 760px;
+        }
+
+        .pdfPage .summaryLine {
+          height: 40px;
+          border-bottom: 1px solid rgba(255,255,255,0.14);
+        }
+      `;
+      document.head.appendChild(style);
     }
 
-    .photoWrap {
-      max-width: 320px;
-    }
+    async function exportDayPdf(dateKey) {
+      if (!window.html2canvas || !window.jspdf || !window.jspdf.jsPDF) {
+        Toast.show("PDFライブラリが読み込めていない");
+        return;
+      }
 
-    .memoBox {
-      min-height: 480px;
-    }
+      injectExportStyle();
 
-    .summaryLines {
-      min-height: 620px;
-    }
-  }
-</style>
-</head>
-<body>
-  <main class="page">
-    <header class="header">
-      <h1 class="title">LOGDAY</h1>
-      <div class="sub">${escapeHtml(titleDate)}</div>
-    </header>
+      const payload = await buildDayPayload(dateKey);
+      const root = ensureExportRoot();
+      root.innerHTML = buildDayHtmlString(payload);
 
-    ${entryHtml || '<div class="sub">この日はまだ記録がありません</div>'}
+      const pageEl = root.querySelector("#noteshelfPdfPage");
+      if (!pageEl) throw new Error("PDFレイアウト生成失敗");
 
-    <section class="summary">
-      <div class="summaryTitle">総括 / メモ</div>
-      <div class="summaryText">${escapeHtml(payload.summary || "").replace(/\n/g, "<br>")}</div>
-      <div class="summaryLines">
-        ${summaryLines}
-      </div>
-    </section>
-  </main>
-</body>
-</html>`;
-}
+      await new Promise((resolve) => setTimeout(resolve, 120));
 
-    async function downloadDayHtml(dateKey) {
-      const html = await buildDayHtml(dateKey);
-      const blob = new Blob([html], { type: "text/html" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `logday-noteshelf-${dateKey}.html`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      const canvas = await window.html2canvas(pageEl, {
+        backgroundColor: "#000000",
+        scale: IS_SAFARI ? 1.2 : 1.5,
+        useCORS: true,
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", IS_SAFARI ? 0.88 : 0.92);
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: "p",
+        unit: "mm",
+        format: "a4",
+        compress: true,
+      });
+
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      if (imgHeight <= pageHeight) {
+        pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight, undefined, "FAST");
+      } else {
+        let y = 0;
+        let pageIndex = 0;
+
+        const pageCanvas = document.createElement("canvas");
+        const pageCtx = pageCanvas.getContext("2d");
+        const sliceHeightPx = Math.floor((canvas.width * pageHeight) / pageWidth);
+
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeightPx;
+
+        while (y < canvas.height) {
+          pageCtx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
+          pageCtx.fillStyle = "#000";
+          pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+          pageCtx.drawImage(
+            canvas,
+            0,
+            y,
+            canvas.width,
+            sliceHeightPx,
+            0,
+            0,
+            pageCanvas.width,
+            sliceHeightPx
+          );
+
+          const pageImg = pageCanvas.toDataURL("image/jpeg", IS_SAFARI ? 0.88 : 0.92);
+
+          if (pageIndex > 0) pdf.addPage();
+          pdf.addImage(pageImg, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+
+          y += sliceHeightPx;
+          pageIndex++;
+        }
+      }
+
+      pdf.save(`logday-noteshelf-${dateKey}.pdf`);
+      root.innerHTML = "";
     }
 
     return {
-      buildDayPayload,
-      buildDayHtml,
-      downloadDayHtml,
+      exportDayPdf,
     };
   })();
 
@@ -2167,14 +2218,15 @@
       });
     }
 
-    function bindNoteshelfExport() {
-      on(DOM.exportNoteshelf, "click", async () => {
+    function bindNoteshelfPdfExport() {
+      on(DOM.exportNoteshelfPdf, "click", async () => {
         try {
-          await NoteshelfExport.downloadDayHtml(State.currentDate);
-          Toast.show("Noteshelf用HTMLを書き出しました");
+          Toast.show("PDFを作成中...");
+          await NoteshelfExport.exportDayPdf(State.currentDate);
+          Toast.show("PDFを書き出しました");
         } catch (e) {
           console.error(e);
-          Toast.show("Noteshelf書き出しに失敗");
+          Toast.show("PDF書き出しに失敗");
         }
       });
     }
@@ -2256,7 +2308,7 @@
     function init() {
       bindModal();
       bindExport();
-      bindNoteshelfExport();
+      bindNoteshelfPdfExport();
       bindCleanup();
       bindImport();
     }
