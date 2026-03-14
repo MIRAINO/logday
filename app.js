@@ -2,8 +2,16 @@
   "use strict";
 
   /* =========================================================
-    LOGDAY app.js（安定版 + 写真回転補正 + 月カレンダー薄グレー）
+     LOGDAY app.js
+     Noteshelf対応版
+     - entryを複数写真対応へ変更
+     - saveDay / loadDay を新形式へ変更
+     - 写真保存を複数枚1エントリー方式へ変更
+     - Noteshelf用HTML書き出しを追加
   ========================================================= */
+
+  const DATA_VERSION = 2;
+  const NOTESHELF_EXPORT_VERSION = 1;
 
   /* =======================
      Global error -> Toast
@@ -92,6 +100,15 @@
     });
   }
 
+  function escapeHtml(str) {
+    return String(str || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
   /* =======================
      Toast
   ======================= */
@@ -111,32 +128,134 @@
   })();
 
   /* =======================
-     Storage (localStorage)
+     Storage
   ======================= */
   const Storage = (() => {
+    function normalizePhoto(raw, fallbackCreatedAt = Date.now()) {
+      if (!raw) return null;
+      if (typeof raw === "string") {
+        return {
+          id: raw,
+          name: "",
+          shotAt: fallbackCreatedAt,
+          shotTime: "",
+          mime: "image/jpeg",
+        };
+      }
+      return {
+        id: raw.id || "",
+        name: raw.name || "",
+        shotAt: Number(raw.shotAt || fallbackCreatedAt),
+        shotTime: raw.shotTime || "",
+        mime: raw.mime || "image/jpeg",
+      };
+    }
+
+    function normalizeEntry(raw, fallbackCreatedAt = Date.now()) {
+      const entry = raw || {};
+      const createdAt = Number(entry.createdAt || fallbackCreatedAt);
+
+      let photos = [];
+      if (Array.isArray(entry.photos)) {
+        photos = entry.photos.map((p) => normalizePhoto(p, createdAt)).filter(Boolean);
+      } else if (entry.photoId) {
+        photos = [
+          normalizePhoto(
+            {
+              id: entry.photoId,
+              name: entry.fileName || "",
+              shotAt: createdAt,
+              shotTime: entry.time || "",
+              mime: "image/jpeg",
+            },
+            createdAt
+          ),
+        ].filter(Boolean);
+      }
+
+      let attachments = [];
+      if (Array.isArray(entry.attachments)) {
+        attachments = entry.attachments.map((a) => ({
+          id: a.id || "",
+          name: a.name || "",
+          mime: a.mime || "",
+          kind: a.kind || "file",
+        }));
+      } else if (entry.fileName && !photos.length) {
+        attachments = [
+          {
+            id: "",
+            name: entry.fileName,
+            mime: "",
+            kind: "file",
+          },
+        ];
+      }
+
+      return {
+        id: entry.id || uid(),
+        createdAt,
+        updatedAt: Number(entry.updatedAt || createdAt),
+        time: entry.time || "",
+        text: entry.text || "",
+        type: entry.type || (photos.length ? "photo" : attachments.length ? "file" : "text"),
+        photos,
+        attachments,
+        note: entry.note || "",
+      };
+    }
+
+    function normalizeDay(dateKey, raw) {
+      const day = raw || {};
+      const base = {
+        version: DATA_VERSION,
+        date: dateKey,
+        createdAt: Number(day.createdAt || Date.now()),
+        updatedAt: Number(day.updatedAt || Date.now()),
+        summary: day.summary || "",
+        noteshelf: {
+          theme: "dark",
+          textColor: "#FFFFFF",
+          summarySpaceLines: Number(day?.noteshelf?.summarySpaceLines || 6),
+        },
+        entries: [],
+      };
+
+      const srcEntries = Array.isArray(day.entries) ? day.entries : [];
+      base.entries = srcEntries.map((e) => normalizeEntry(e, Date.now()));
+
+      return base;
+    }
+
+    function getDay(dateKey) {
+      try {
+        const raw = JSON.parse(localStorage.getItem(dateKey) || "{}");
+        return normalizeDay(dateKey, raw);
+      } catch (e) {
+        console.warn("getDay parse failed:", e);
+        return normalizeDay(dateKey, {});
+      }
+    }
+
     function saveDay(dateKey, dayData) {
       try {
-        localStorage.setItem(dateKey, JSON.stringify(dayData));
+        const normalized = normalizeDay(dateKey, dayData);
+        normalized.version = DATA_VERSION;
+        normalized.date = dateKey;
+        normalized.updatedAt = Date.now();
+
+        const payload = JSON.stringify(normalized);
+        localStorage.setItem(dateKey, payload);
         return true;
       } catch (err) {
         console.error("saveDay failed:", err);
         if (err && String(err.name) === "QuotaExceededError") {
-          Toast.show("保存できなかった：容量オーバー（古い写真が残ってるかも）");
+          Toast.show("保存できなかった：容量オーバー");
         } else {
           Toast.show("保存できなかった…");
         }
         return false;
       }
-    }
-
-    function getDay(dateKey) {
-      const dayData = JSON.parse(localStorage.getItem(dateKey) || "{}");
-      dayData.entries = dayData.entries || [];
-      for (const e of dayData.entries) {
-        if (!e.id) e.id = uid();
-        if (e.createdAt == null) e.createdAt = Date.now();
-      }
-      return dayData;
     }
 
     function sortEntries(dayData) {
@@ -145,9 +264,11 @@
         const ta = timeToMinutes(a.time);
         const tb = timeToMinutes(b.time);
         if (ta !== tb) return ta - tb;
+
         const ca = a.createdAt ?? 0;
         const cb = b.createdAt ?? 0;
         if (ca !== cb) return ca - cb;
+
         return String(a.id || "").localeCompare(String(b.id || ""));
       });
     }
@@ -156,17 +277,24 @@
       const out = {};
       for (const k of Object.keys(localStorage)) {
         if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
-          out[k] = JSON.parse(localStorage.getItem(k));
+          out[k] = getDay(k);
         }
       }
       return out;
     }
 
-    return { saveDay, getDay, sortEntries, exportAll };
+    return {
+      saveDay,
+      getDay,
+      sortEntries,
+      exportAll,
+      normalizeDay,
+      normalizeEntry,
+    };
   })();
 
   /* =======================
-     EXIF (JPEG) minimal
+     EXIF
   ======================= */
   function exifDateFromJpegArrayBuffer(buf) {
     const dv = new DataView(buf);
@@ -311,10 +439,7 @@
         for (let i = 0; i < num0; i++) {
           const ent = ifd0 + 2 + i * 12;
           const tag = get16(ent);
-
-          if (tag === 0x0112) {
-            return get16(ent + 8) || 1;
-          }
+          if (tag === 0x0112) return get16(ent + 8) || 1;
         }
         return 1;
       }
@@ -343,7 +468,7 @@
   }
 
   /* =======================
-     PhotosDB (IndexedDB)
+     PhotosDB
   ======================= */
   const PhotosDB = (() => {
     const DB_NAME = "logday_db";
@@ -427,7 +552,7 @@
   })();
 
   /* =======================
-     Legacy migrate (localStorage dataURL -> IDB)
+     Legacy migrate
   ======================= */
   async function migrateLegacyPhotosForDay(dateKey) {
     const dayData = Storage.getDay(dateKey);
@@ -435,9 +560,12 @@
     let moved = 0;
 
     for (const e of dayData.entries || []) {
+      if (Array.isArray(e.photos) && e.photos.length) continue;
+
       const isLegacy =
         e && typeof e.photo === "string" && e.photo.startsWith("data:image/");
-      const needsMove = isLegacy && !e.photoId;
+      const needsMove = isLegacy;
+
       if (!needsMove) continue;
 
       try {
@@ -450,8 +578,19 @@
           name: "photo.jpg",
           createdAt: e.createdAt || Date.now(),
         });
-        e.photoId = pid;
+
+        e.photos = [
+          {
+            id: pid,
+            name: "photo.jpg",
+            shotAt: e.createdAt || Date.now(),
+            shotTime: e.time || "",
+            mime: blob.type || "image/jpeg",
+          },
+        ];
+        e.type = "photo";
         delete e.photo;
+        delete e.photoId;
         moved++;
         changed = true;
       } catch (err) {
@@ -479,7 +618,7 @@
     timeTicker: null,
 
     editingId: null,
-    editingPrevPhotoId: null,
+    editingPrevPhotoIds: [],
     isSaving: false,
 
     pendingPhotos: [],
@@ -520,13 +659,14 @@
     settingsBackdrop: $("settingsBackdrop"),
     closeSettings: $("closeSettings"),
     exportLogday: $("exportLogday"),
+    exportNoteshelf: $("exportNoteshelf"),
     cleanupStorage: $("cleanupStorage"),
     timeStepBtn: $("timeStepBtn"),
     importFile: $("importFile"),
   };
 
   /* =======================
-     Layout (body padding-bottom)
+     Layout
   ======================= */
   const Layout = (() => {
     let raf = null;
@@ -558,7 +698,7 @@
   })();
 
   /* =======================
-     TimeStep (1 or 10)
+     TimeStep
   ======================= */
   const TimeStep = (() => {
     const STEP_KEY = "logday_time_step_min";
@@ -670,6 +810,9 @@
         btn.innerHTML = `${wnames[i]}<span class="d">${d.getDate()}</span>`;
         btn.classList.toggle("active", ymd === State.currentDate);
 
+        const saved = Storage.getDay(ymd);
+        if ((saved.entries || []).length > 0) btn.classList.add("hasEntry");
+
         btn.onclick = async () => {
           State.currentDate = ymd;
           await App.loadAndRender(State.currentDate);
@@ -701,15 +844,12 @@
 
       for (let day = 1; day <= lastDate; day++) {
         const dayStr = `${year}-${pad2(month + 1)}-${pad2(day)}`;
-
         const btn = document.createElement("button");
         btn.textContent = String(day);
         btn.dataset.date = dayStr;
 
         const saved = Storage.getDay(dayStr);
-        if (saved.entries && saved.entries.length > 0) {
-          btn.classList.add("hasEntry");
-        }
+        if ((saved.entries || []).length > 0) btn.classList.add("hasEntry");
 
         btn.classList.toggle("active", dayStr === State.currentDate);
 
@@ -760,15 +900,10 @@
      Entries
   ======================= */
   const Entries = (() => {
-    async function renderEntryPhoto(imgEl, photoId) {
-      try {
-        const rec = await PhotosDB.get(photoId);
-        if (!rec || !rec.blob) return;
-        const dataUrl = await blobToDataURL(rec.blob);
-        imgEl.src = dataUrl;
-      } catch (e) {
-        console.warn("photo render failed", e);
-      }
+    async function renderPhotoThumb(photo) {
+      const rec = await PhotosDB.get(photo.id);
+      if (!rec || !rec.blob) return "";
+      return await blobToDataURL(rec.blob);
     }
 
     const SWIPE_OPEN_X = -84;
@@ -900,7 +1035,10 @@
       const idx = dayData.entries.findIndex((e) => e.id === entryId);
       if (idx < 0) return;
 
-      const photoId = dayData.entries[idx]?.photoId || null;
+      const prevPhotos = Array.isArray(dayData.entries[idx]?.photos)
+        ? dayData.entries[idx].photos.slice()
+        : [];
+
       if (wrapEl) wrapEl.classList.add("removing");
 
       setTimeout(async () => {
@@ -913,9 +1051,9 @@
           return;
         }
 
-        if (photoId) {
+        for (const p of prevPhotos) {
           try {
-            await PhotosDB.del(photoId);
+            await PhotosDB.del(p.id);
           } catch (e) {
             console.warn(e);
           }
@@ -972,28 +1110,43 @@
           time.className = "time";
           time.textContent = entry.time && entry.time.trim() ? entry.time : "•";
 
-          const text = document.createElement("span");
+          const main = document.createElement("div");
+          main.className = "entryMain";
+
+          const text = document.createElement("div");
           text.className = "text";
           text.textContent = entry.text || "";
+          main.appendChild(text);
+
+          if (entry.photos && entry.photos.length) {
+            const photoGrid = document.createElement("div");
+            photoGrid.className = "entryPhotoGrid";
+
+            for (const p of entry.photos) {
+              const img = document.createElement("img");
+              img.className = "entryPhoto";
+              img.alt = "photo";
+              img.loading = "lazy";
+              photoGrid.appendChild(img);
+              renderPhotoThumb(p).then((src) => {
+                if (src) img.src = src;
+              });
+            }
+
+            main.appendChild(photoGrid);
+          }
+
+          if (entry.attachments && entry.attachments.length) {
+            for (const a of entry.attachments) {
+              const fileLine = document.createElement("div");
+              fileLine.className = "fileLine";
+              fileLine.textContent = `📎 ${a.name}`;
+              main.appendChild(fileLine);
+            }
+          }
 
           content.appendChild(time);
-          content.appendChild(text);
-
-          if (entry.photoId) {
-            const img = document.createElement("img");
-            img.className = "entryPhoto";
-            img.alt = "photo";
-            img.loading = "lazy";
-            content.appendChild(img);
-            renderEntryPhoto(img, entry.photoId);
-          }
-
-          if (entry.fileName) {
-            const fileLine = document.createElement("div");
-            fileLine.className = "fileLine";
-            fileLine.textContent = `📎 ${entry.fileName}`;
-            content.appendChild(fileLine);
-          }
+          content.appendChild(main);
 
           attachSwipeHandlers(wrap, content);
 
@@ -1200,12 +1353,10 @@
       const nonImages = files.filter((f) => !(f.type || "").startsWith("image/"));
 
       if (images.length) {
-        const targets = State.editingId ? [images[0]] : images;
-
         const grid = document.createElement("div");
         grid.className = "thumbGrid";
 
-        for (const file of targets) {
+        for (const file of images) {
           try {
             const name = file.name || "";
             const shotDate = await getShotDate(file);
@@ -1238,7 +1389,13 @@
 
             const dataUrl = await blobToDataURL(verify.blob);
 
-            State.pendingPhotos.push({ id: pid, name, shotAt, shotTime });
+            State.pendingPhotos.push({
+              id: pid,
+              name,
+              shotAt,
+              shotTime,
+              mime: verify.mime || blob.type || "image/jpeg",
+            });
 
             const img = document.createElement("img");
             img.src = dataUrl;
@@ -1246,7 +1403,7 @@
             grid.appendChild(img);
           } catch (e) {
             console.error("photo attach failed:", e);
-            Toast.show("写真の保存に失敗（iPhoneの制限/プライベート/容量）");
+            Toast.show("写真の保存に失敗");
             break;
           }
         }
@@ -1272,7 +1429,9 @@
       if (nonImages.length) {
         State.pendingFileName = nonImages[0].name || "";
         if (DOM.previewArea) {
-          DOM.previewArea.innerHTML = `<div class="filePreview">📎 ${State.pendingFileName}</div>`;
+          DOM.previewArea.innerHTML = `<div class="filePreview">📎 ${escapeHtml(
+            State.pendingFileName
+          )}</div>`;
         }
         setPreviewVisible(true);
         expand();
@@ -1302,50 +1461,54 @@
 
       resetPending();
       clearPreview();
-      State.editingPrevPhotoId = entry.photoId || null;
 
-      if (entry.photoId) {
-        try {
-          const rec = await PhotosDB.get(entry.photoId);
-          if (rec && rec.blob) {
+      State.editingPrevPhotoIds = Array.isArray(entry.photos)
+        ? entry.photos.map((p) => p.id)
+        : [];
+
+      if (entry.photos && entry.photos.length) {
+        const grid = document.createElement("div");
+        grid.className = "thumbGrid";
+
+        for (const p of entry.photos) {
+          try {
+            const rec = await PhotosDB.get(p.id);
+            if (!rec || !rec.blob) continue;
             const dataUrl = await blobToDataURL(rec.blob);
 
-            State.pendingPhotos = [
-              {
-                id: entry.photoId,
-                name: rec.name || "photo",
-                shotAt: rec.createdAt || (entry.createdAt ?? Date.now()),
-                shotTime: entry.time || "",
-              },
-            ];
-
-            const grid = document.createElement("div");
-            grid.className = "thumbGrid";
+            State.pendingPhotos.push({
+              id: p.id,
+              name: p.name || rec.name || "",
+              shotAt: p.shotAt || rec.createdAt || Date.now(),
+              shotTime: p.shotTime || entry.time || "",
+              mime: p.mime || rec.mime || "image/jpeg",
+            });
 
             const img = document.createElement("img");
             img.src = dataUrl;
             img.alt = "attachment";
             grid.appendChild(img);
-            DOM.previewArea?.appendChild(grid);
-
-            const meta = document.createElement("div");
-            meta.className = "thumbMeta";
-            meta.textContent = `編集中：写真 1枚`;
-            DOM.previewArea?.appendChild(meta);
-
-            setPreviewVisible(true);
-            Layout.scheduleUpdate();
+          } catch (e) {
+            console.warn(e);
           }
-        } catch (e) {
-          console.warn(e);
         }
-      } else if (entry.fileName) {
-        State.pendingFileName = entry.fileName || "";
+
+        if (State.pendingPhotos.length) {
+          DOM.previewArea?.appendChild(grid);
+          const meta = document.createElement("div");
+          meta.className = "thumbMeta";
+          meta.textContent = `編集中：写真 ${State.pendingPhotos.length}枚`;
+          DOM.previewArea?.appendChild(meta);
+          setPreviewVisible(true);
+        }
+      } else if (entry.attachments && entry.attachments.length) {
+        State.pendingFileName = entry.attachments[0]?.name || "";
         if (DOM.previewArea) {
-          DOM.previewArea.innerHTML = `<div class="filePreview">📎 ${State.pendingFileName}</div>`;
+          DOM.previewArea.innerHTML = `<div class="filePreview">📎 ${escapeHtml(
+            State.pendingFileName
+          )}</div>`;
         }
         setPreviewVisible(true);
-        Layout.scheduleUpdate();
       }
 
       setTimeout(() => DOM.logInput?.focus?.(), 0);
@@ -1370,6 +1533,8 @@
         await migrateLegacyPhotosForDay(State.currentDate);
 
         const text = (DOM.logInput?.value || "").trim();
+        const hasPhoto = State.pendingPhotos.length > 0;
+        const hasFileName = !!State.pendingFileName && !hasPhoto;
 
         let time = "";
         if (State.timeMode === "set") {
@@ -1381,10 +1546,18 @@
           if (DOM.logTime) DOM.logTime.value = time;
           if (!time) State.timeMode = "auto";
         }
-        if (State.timeMode === "auto") time = nowHHMM();
 
-        const hasPhoto = State.pendingPhotos.length > 0;
-        const hasFileName = !!State.pendingFileName && !hasPhoto;
+        if (State.timeMode === "auto") {
+          if (hasPhoto) {
+            const sortedShots = State.pendingPhotos
+              .map((p) => p.shotTime)
+              .filter(Boolean)
+              .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+            time = sortedShots[0] || nowHHMM();
+          } else {
+            time = nowHHMM();
+          }
+        }
 
         if (!text && !hasPhoto && !hasFileName) {
           collapse();
@@ -1394,66 +1567,67 @@
         }
 
         const dayData = Storage.getDay(State.currentDate);
+
         const baseText =
-          text || (hasPhoto ? "📷 写真" : hasFileName ? `📎 ${State.pendingFileName}` : "");
+          text ||
+          (hasPhoto ? "📷 写真" : hasFileName ? `📎 ${State.pendingFileName}` : "");
+
+        const newEntry = {
+          id: State.editingId || uid(),
+          createdAt: hasPhoto
+            ? Math.min(...State.pendingPhotos.map((p) => p.shotAt || Date.now()))
+            : Date.now(),
+          updatedAt: Date.now(),
+          time,
+          text: baseText,
+          type: hasPhoto ? "photo" : hasFileName ? "file" : "text",
+          photos: hasPhoto
+            ? State.pendingPhotos.map((p) => ({
+                id: p.id,
+                name: p.name || "",
+                shotAt: p.shotAt || Date.now(),
+                shotTime: p.shotTime || "",
+                mime: p.mime || "image/jpeg",
+              }))
+            : [],
+          attachments: hasFileName
+            ? [
+                {
+                  id: "",
+                  name: State.pendingFileName,
+                  mime: "",
+                  kind: "file",
+                },
+              ]
+            : [],
+          note: "",
+        };
 
         if (State.editingId) {
-          const nextPhotoId = hasPhoto
-            ? State.pendingPhotos[0]?.id || null
-            : State.editingPrevPhotoId || null;
-
-          const newPayload = {
-            time,
-            text: baseText,
-            photoId: nextPhotoId,
-            fileName: hasFileName ? State.pendingFileName : null,
-          };
-
-          const prevId = State.editingPrevPhotoId;
-          const nextId = newPayload.photoId;
-
           const idx = (dayData.entries || []).findIndex((e) => e.id === State.editingId);
           if (idx >= 0) {
-            dayData.entries[idx] = { ...dayData.entries[idx], ...newPayload };
+            const prev = dayData.entries[idx];
+            newEntry.createdAt = prev.createdAt || newEntry.createdAt;
+            dayData.entries[idx] = { ...prev, ...newEntry };
             Toast.show("更新しました");
           } else {
-            dayData.entries.push({ id: uid(), createdAt: Date.now(), ...newPayload });
+            dayData.entries.push(newEntry);
             Toast.show("追加しました");
           }
 
-          const replaced = !!prevId && !!nextId && prevId !== nextId;
-          if (replaced) {
-            try {
-              await PhotosDB.del(prevId);
-            } catch (e) {
-              console.warn(e);
+          const nextPhotoIds = new Set((newEntry.photos || []).map((p) => p.id));
+          for (const oldId of State.editingPrevPhotoIds || []) {
+            if (!nextPhotoIds.has(oldId)) {
+              try {
+                await PhotosDB.del(oldId);
+              } catch (e) {
+                console.warn(e);
+              }
             }
           }
         } else {
-          if (hasPhoto) {
-            for (const p of State.pendingPhotos) {
-              const t = p.shotTime || time;
-              dayData.entries.push({
-                id: uid(),
-                createdAt: p.shotAt || Date.now(),
-                time: t,
-                text: baseText || "📷 写真",
-                photoId: p.id,
-                fileName: null,
-              });
-            }
-            Toast.show(`${State.pendingPhotos.length}枚 保存しました`);
-          } else {
-            dayData.entries.push({
-              id: uid(),
-              createdAt: Date.now(),
-              time,
-              text: baseText,
-              photoId: null,
-              fileName: hasFileName ? State.pendingFileName : null,
-            });
-            Toast.show("保存しました");
-          }
+          dayData.entries.push(newEntry);
+          Toast.show("保存しました");
         }
 
         Storage.sortEntries(dayData);
@@ -1464,7 +1638,7 @@
         await App.loadAndRender(State.currentDate);
 
         State.editingId = null;
-        State.editingPrevPhotoId = null;
+        State.editingPrevPhotoIds = [];
 
         if (DOM.logInput) DOM.logInput.value = "";
         clearPreview();
@@ -1603,6 +1777,241 @@
   })();
 
   /* =======================
+     Noteshelf Export
+  ======================= */
+  const NoteshelfExport = (() => {
+    async function buildDayPayload(dateKey) {
+      const day = Storage.getDay(dateKey);
+      Storage.sortEntries(day);
+
+      const blocks = [];
+      for (const entry of day.entries || []) {
+        const photos = [];
+        for (const p of entry.photos || []) {
+          try {
+            const rec = await PhotosDB.get(p.id);
+            if (!rec || !rec.blob) continue;
+            const dataUrl = await blobToDataURL(rec.blob);
+            photos.push({
+              id: p.id,
+              name: p.name || rec.name || "",
+              dataUrl,
+              shotAt: p.shotAt || rec.createdAt || Date.now(),
+              shotTime: p.shotTime || entry.time || "",
+            });
+          } catch (e) {
+            console.warn("noteshelf export photo read failed:", e);
+          }
+        }
+
+        blocks.push({
+          kind: "entry",
+          id: entry.id,
+          time: entry.time || "",
+          text: entry.text || "",
+          photos,
+          attachments: entry.attachments || [],
+        });
+      }
+
+      return {
+        schemaVersion: NOTESHELF_EXPORT_VERSION,
+        source: "LOGDAY",
+        target: "Noteshelf",
+        date: dateKey,
+        theme: "dark",
+        textColor: "#FFFFFF",
+        summary: day.summary || "",
+        summarySpaceLines: day?.noteshelf?.summarySpaceLines || 6,
+        blocks,
+      };
+    }
+
+    async function buildDayHtml(dateKey) {
+      const payload = await buildDayPayload(dateKey);
+      const titleDate = parseYMD(dateKey).toLocaleDateString("ja-JP", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+      });
+
+      const entryHtml = payload.blocks
+        .map((b) => {
+          const photosHtml = (b.photos || [])
+            .map(
+              (p) => `
+                <div class="photoWrap">
+                  <img src="${p.dataUrl}" alt="${escapeHtml(p.name || "photo")}">
+                </div>
+              `
+            )
+            .join("");
+
+          const filesHtml = (b.attachments || [])
+            .map((a) => `<div class="fileLine">📎 ${escapeHtml(a.name)}</div>`)
+            .join("");
+
+          return `
+            <section class="entry">
+              <div class="time">${escapeHtml(b.time || "•")}</div>
+              <div class="body">
+                <div class="text">${escapeHtml(b.text || "").replace(/\n/g, "<br>")}</div>
+                ${photosHtml ? `<div class="photos">${photosHtml}</div>` : ""}
+                ${filesHtml}
+              </div>
+            </section>
+          `;
+        })
+        .join("");
+
+      const summaryLines = new Array(payload.summarySpaceLines)
+        .fill('<div class="summaryLine"></div>')
+        .join("");
+
+      return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOGDAY Noteshelf ${escapeHtml(dateKey)}</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+  }
+  body {
+    padding: 28px 22px 40px;
+    line-height: 1.65;
+  }
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .header {
+    border-bottom: 1px solid rgba(255,255,255,0.18);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+  .title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin: 0 0 8px;
+  }
+  .sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.72);
+  }
+  .entry {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 12px;
+    padding: 12px 0 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .time {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    padding-top: 2px;
+  }
+  .body {
+    min-width: 0;
+  }
+  .text {
+    white-space: normal;
+    word-break: break-word;
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  .photos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 10px 0 6px;
+  }
+  .photoWrap {
+    border-radius: 14px;
+    overflow: hidden;
+    background: #111;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .photoWrap img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .fileLine {
+    font-size: 14px;
+    color: rgba(255,255,255,0.75);
+    margin-top: 6px;
+  }
+  .summary {
+    margin-top: 28px;
+    padding-top: 12px;
+  }
+  .summaryTitle {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .summaryText {
+    min-height: 24px;
+    margin-bottom: 10px;
+    color: rgba(255,255,255,0.96);
+  }
+  .summaryLine {
+    height: 22px;
+    border-bottom: 1px solid rgba(255,255,255,0.14);
+  }
+  @media print {
+    body { padding: 16mm 14mm 18mm; }
+    .page { max-width: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <h1 class="title">LOGDAY</h1>
+      <div class="sub">${escapeHtml(titleDate)}</div>
+    </header>
+
+    ${entryHtml || '<div class="sub">この日はまだ記録がありません</div>'}
+
+    <section class="summary">
+      <div class="summaryTitle">総括 / メモ</div>
+      <div class="summaryText">${escapeHtml(payload.summary || "").replace(/\n/g, "<br>")}</div>
+      ${summaryLines}
+    </section>
+  </main>
+</body>
+</html>`;
+    }
+
+    async function downloadDayHtml(dateKey) {
+      const html = await buildDayHtml(dateKey);
+      const blob = new Blob([html], { type: "text/html" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `logday-noteshelf-${dateKey}.html`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+
+    return {
+      buildDayPayload,
+      buildDayHtml,
+      downloadDayHtml,
+    };
+  })();
+
+  /* =======================
      Settings
   ======================= */
   const Settings = (() => {
@@ -1648,6 +2057,19 @@
         a.href = URL.createObjectURL(blob);
         a.download = `logday-backup-${new Date().toISOString().slice(0, 10)}.json`;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      });
+    }
+
+    function bindNoteshelfExport() {
+      on(DOM.exportNoteshelf, "click", async () => {
+        try {
+          await NoteshelfExport.downloadDayHtml(State.currentDate);
+          Toast.show("Noteshelf用HTMLを書き出しました");
+        } catch (e) {
+          console.error(e);
+          Toast.show("Noteshelf書き出しに失敗");
+        }
       });
     }
 
@@ -1708,7 +2130,8 @@
           }
 
           for (const k of dateKeys) {
-            localStorage.setItem(k, JSON.stringify(data[k]));
+            const normalized = Storage.normalizeDay(k, data[k]);
+            localStorage.setItem(k, JSON.stringify(normalized));
           }
 
           alert(`復元完了！（${dateKeys.length}日分）`);
@@ -1727,6 +2150,7 @@
     function init() {
       bindModal();
       bindExport();
+      bindNoteshelfExport();
       bindCleanup();
       bindImport();
     }
@@ -1750,7 +2174,7 @@
       PhotosDB.open().catch(() => {});
       const ok = await PhotosDB.ping();
       if (ok === false) {
-        Toast.show("写真DBが使えない状態（プライベート/制限の可能性）");
+        Toast.show("写真DBが使えない状態");
       }
 
       Header.initShadow();
