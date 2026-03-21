@@ -1,18 +1,30 @@
 (() => {
   "use strict";
-  
+
   /* =========================================================
-     LOGDAY app.js / 実装18日目 完全版
-     - エントリー編集破損を修正
-     - 週表示・月表示の「記録あり日」をグレー表示
-     - 写真は IndexedDB に保存
-     - 旧 dataURL 写真を自動移行
-     - Noteshelf 用 PDF 書き出し
-     - 既存HTMLの id をそのまま使う前提
+     LOGDAY app.js / 実装20日目 Noteshelf最適化版
+     - エントリー編集破損修正
+     - 週/月の記録あり日グレー表示
+     - 写真は IndexedDB 保存
+     - 旧 dataURL 写真の自動移行
+     - Noteshelf 用 PDF を #pdfPage ベースで生成
+     - A4 / 1日1ページ / 固定文字サイズ寄り
   ========================================================= */
 
   const DATA_VERSION = 2;
   const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+  const PDF_CFG = window.LOGDAY_PDF_CONFIG || {
+    page: { size: "A4", orientation: "portrait" },
+    noteshelf: {
+      mode: "single-page",
+      fixedTextScale: true,
+      reserveSummarySpace: true,
+    },
+    font: {
+      body: '"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif',
+    },
+  };
 
   /* =======================
      Global error -> Toast
@@ -112,7 +124,7 @@
       el.textContent = message;
       el.classList.add("show");
       clearTimeout(timer);
-      timer = setTimeout(() => el.classList.remove("show"), 1400);
+      timer = setTimeout(() => el.classList.remove("show"), 1500);
     }
 
     return { show };
@@ -606,6 +618,8 @@
     cleanupStorage: $("cleanupStorage"),
     timeStepBtn: $("timeStepBtn"),
     importFile: $("importFile"),
+    pdfRenderRoot: $("pdfRenderRoot"),
+    pdfPage: $("pdfPage"),
   };
 
   const Layout = (() => {
@@ -1609,7 +1623,6 @@
           if (document.activeElement !== DOM.logInput) return;
           if (DOM.inputBar && DOM.inputBar.contains(e.target)) return;
           DOM.logInput?.blur?.();
-          // editingId はここで消さない
         },
         { passive: true }
       );
@@ -1674,11 +1687,14 @@
   })();
 
   const NoteshelfExport = (() => {
+    const MM_A4_W = 210;
+    const MM_A4_H = 297;
+
     async function buildDayPayload(dateKey) {
       const day = Storage.getDay(dateKey);
       Storage.sortEntries(day);
-      const blocks = [];
 
+      const entries = [];
       for (const entry of day.entries || []) {
         const photos = [];
         for (const p of entry.photos || []) {
@@ -1699,13 +1715,13 @@
         }
 
         photos.sort((a, b) => (a.shotAt || 0) - (b.shotAt || 0));
-        blocks.push({
-          kind: "entry",
+
+        entries.push({
           id: entry.id,
           time: entry.time || "",
           text: entry.text || "",
           photos,
-          attachments: entry.attachments || [],
+          attachments: Array.isArray(entry.attachments) ? entry.attachments : [],
         });
       }
 
@@ -1713,127 +1729,131 @@
         date: dateKey,
         summary: day.summary || "",
         summarySpaceLines: day?.noteshelf?.summarySpaceLines || 12,
-        blocks,
+        entries,
       };
     }
 
-    function buildDayHtmlString(payload) {
-      const titleDate = parseYMD(payload.date).toLocaleDateString("ja-JP", {
+    function dateLabel(dateKey) {
+      return parseYMD(dateKey).toLocaleDateString("ja-JP", {
         year: "numeric",
         month: "long",
         day: "numeric",
         weekday: "short",
       });
+    }
 
-      const entryHtml = payload.blocks
-        .map((b) => {
-          const hasPhotos = Array.isArray(b.photos) && b.photos.length > 0;
-          const photosHtml = (b.photos || [])
-            .map(
-              (p) => `
-                <div class="photoWrap">
-                  <img src="${p.dataUrl}" alt="${escapeHtml(p.name || "photo")}">
-                </div>
-              `
-            )
-            .join("");
+    function buildPhotoAreaHtml(photos) {
+      if (!photos || !photos.length) return "";
+      if (photos.length === 1) {
+        return `<img class="pdfPhoto" src="${photos[0].dataUrl}" alt="${escapeHtml(photos[0].name || "photo")}">`;
+      }
 
-          const filesHtml = (b.attachments || [])
-            .map((a) => `<div class="fileLine">📎 ${escapeHtml(a.name)}</div>`)
-            .join("");
-
-          return `
-            <section class="entry ${hasPhotos ? "hasPhoto" : ""}">
-              <div class="time">${escapeHtml(b.time || "•")}</div>
-              <div class="body">
-                <div class="text">${escapeHtml(b.text || "").replace(/\n/g, "<br>")}</div>
-                ${
-                  hasPhotos
-                    ? `
-                      <div class="photoRow">
-                        <div class="memoCol">
-                          <div class="memoBox"></div>
-                        </div>
-                        <div class="photoCol">${photosHtml}</div>
-                      </div>
-                    `
-                    : ""
-                }
-                ${filesHtml}
-              </div>
-            </section>
-          `;
-        })
-        .join("");
-
-      const summaryLines = new Array(payload.summarySpaceLines)
-        .fill('<div class="summaryLine"></div>')
-        .join("");
-
+      const slice = photos.slice(0, 4);
       return `
-        <div id="noteshelfPdfPage" class="pdfPage">
-          <div class="page">
-            <header class="header">
-              <h1 class="title">LOGDAY</h1>
-              <div class="sub">${escapeHtml(titleDate)}</div>
-            </header>
-
-            ${entryHtml || '<div class="sub">この日はまだ記録がありません</div>'}
-
-            <section class="summary">
-              <div class="summaryTitle">総括 / メモ</div>
-              <div class="summaryText">${escapeHtml(payload.summary || "").replace(/\n/g, "<br>")}</div>
-              <div class="summaryLines">${summaryLines}</div>
-            </section>
-          </div>
+        <div class="pdfPhotoGrid">
+          ${slice
+            .map(
+              (p) =>
+                `<img class="pdfPhoto" src="${p.dataUrl}" alt="${escapeHtml(p.name || "photo")}">`
+            )
+            .join("")}
         </div>
       `;
     }
 
-    function ensureExportRoot() {
-      let root = document.getElementById("pdfExportRoot");
-      if (!root) {
-        root = document.createElement("div");
-        root.id = "pdfExportRoot";
-        root.style.position = "fixed";
-        root.style.left = "-100000px";
-        root.style.top = "0";
-        root.style.width = "1240px";
-        root.style.zIndex = "-1";
-        document.body.appendChild(root);
-      }
-      return root;
+    function buildEntryHtml(entry) {
+      const timeText = escapeHtml(entry.time || "•");
+      const textHtml = escapeHtml(entry.text || "").replace(/\n/g, "<br>");
+      const photoHtml = buildPhotoAreaHtml(entry.photos || []);
+      const fileHtml = (entry.attachments || [])
+        .map((a) => `<div class="pdfFile">📎 ${escapeHtml(a.name || "")}</div>`)
+        .join("");
+
+      return `
+        <section class="pdfEntry" data-entry-id="${escapeHtml(entry.id || "")}">
+          <div class="pdfRow">
+            <div class="pdfTime">${timeText}</div>
+            <div class="pdfBody">
+              <div class="pdfText">${textHtml || "&nbsp;"}</div>
+              ${photoHtml}
+              ${fileHtml}
+            </div>
+          </div>
+        </section>
+      `;
     }
 
-    function injectExportStyle() {
-      if (document.getElementById("noteshelfPdfStyle")) return;
-      const style = document.createElement("style");
-      style.id = "noteshelfPdfStyle";
-      style.textContent = `
-        .pdfPage { width:1240px; background:#000; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif; padding:36px 28px 44px; box-sizing:border-box; }
-        .pdfPage * { box-sizing:border-box; }
-        .pdfPage .page { width:100%; min-height:1754px; }
-        .pdfPage .header { border-bottom:1px solid rgba(255,255,255,0.18); padding-bottom:18px; margin-bottom:24px; }
-        .pdfPage .title { font-size:42px; font-weight:800; margin:0 0 10px; letter-spacing:0.03em; }
-        .pdfPage .sub { font-size:20px; color:rgba(255,255,255,0.76); }
-        .pdfPage .entry { display:grid; grid-template-columns:88px 1fr; gap:18px; padding:18px 0 22px; border-bottom:1px solid rgba(255,255,255,0.08); }
-        .pdfPage .time { font-size:22px; font-weight:700; color:rgba(255,255,255,0.88); padding-top:4px; white-space:nowrap; }
-        .pdfPage .body { min-width:0; }
-        .pdfPage .text { font-size:30px; font-weight:500; line-height:1.7; word-break:break-word; margin-bottom:18px; }
-        .pdfPage .photoRow { display:grid; grid-template-columns:1.45fr 1fr; gap:22px; align-items:stretch; margin-top:10px; }
-        .pdfPage .memoCol { min-height:520px; }
-        .pdfPage .memoBox { width:100%; min-height:520px; border-radius:12px; background:repeating-linear-gradient(to bottom, transparent 0, transparent 46px, rgba(255,255,255,0.12) 47px, transparent 48px); }
-        .pdfPage .photoCol { display:flex; flex-direction:column; align-items:flex-end; gap:16px; }
-        .pdfPage .photoWrap { width:100%; max-width:360px; border-radius:16px; overflow:hidden; background:#111; border:1px solid rgba(255,255,255,0.08); }
-        .pdfPage .photoWrap img { display:block; width:100%; height:auto; }
-        .pdfPage .fileLine { font-size:20px; color:rgba(255,255,255,0.78); margin-top:8px; }
-        .pdfPage .summary { margin-top:36px; padding-top:10px; }
-        .pdfPage .summaryTitle { font-size:30px; font-weight:800; margin-bottom:16px; }
-        .pdfPage .summaryText { min-height:48px; margin-bottom:14px; font-size:24px; color:rgba(255,255,255,0.96); line-height:1.7; }
-        .pdfPage .summaryLines { min-height:760px; }
-        .pdfPage .summaryLine { height:40px; border-bottom:1px solid rgba(255,255,255,0.14); }
+    function buildPageHtml(payload) {
+      return `
+        <div class="pdfHeader">
+          <div class="pdfDate">${escapeHtml(dateLabel(payload.date))}</div>
+          <div class="pdfMeta">LOGDAY / Noteshelf用</div>
+        </div>
+        <div class="pdfEntries">
+          ${
+            payload.entries.length
+              ? payload.entries.map(buildEntryHtml).join("")
+              : `<div class="pdfText">この日はまだ記録がありません</div>`
+          }
+        </div>
+        <div class="pdfSummarySpace"></div>
       `;
-      document.head.appendChild(style);
+    }
+
+    function estimateDensity(payload) {
+      const entryCount = payload.entries.length;
+      const photoCount = payload.entries.reduce((n, e) => n + (e.photos?.length || 0), 0);
+      const textChars = payload.entries.reduce((n, e) => n + String(e.text || "").length, 0);
+      return { entryCount, photoCount, textChars };
+    }
+
+    function chooseLayoutClass(payload) {
+      const { entryCount, photoCount, textChars } = estimateDensity(payload);
+
+      if (entryCount >= 9 || photoCount >= 8 || textChars >= 900) {
+        return "tight";
+      }
+      if (entryCount >= 6 || photoCount >= 5 || textChars >= 500) {
+        return "compact";
+      }
+      return "";
+    }
+
+    function getPdfRoot() {
+      if (!DOM.pdfPage) throw new Error("pdfPage が見つからない");
+      return DOM.pdfPage;
+    }
+
+    function waitFrame() {
+      return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    }
+
+    async function renderPdfDom(payload) {
+      const pageEl = getPdfRoot();
+      pageEl.className = "";
+      pageEl.innerHTML = buildPageHtml(payload);
+
+      const layoutClass = chooseLayoutClass(payload);
+      if (layoutClass) pageEl.classList.add(layoutClass);
+
+      pageEl.style.fontFamily = PDF_CFG?.font?.body || "";
+
+      await waitFrame();
+      await waitFrame();
+
+      const maxHeight = pageEl.scrollHeight;
+      if (maxHeight > pageEl.clientHeight + 10) {
+        if (!pageEl.classList.contains("compact")) {
+          pageEl.classList.add("compact");
+          await waitFrame();
+        }
+        if (pageEl.scrollHeight > pageEl.clientHeight + 10 && !pageEl.classList.contains("tight")) {
+          pageEl.classList.add("tight");
+          await waitFrame();
+        }
+      }
+
+      return pageEl;
     }
 
     async function exportDayPdf(dateKey) {
@@ -1842,102 +1862,70 @@
         return;
       }
 
-      injectExportStyle();
       const payload = await buildDayPayload(dateKey);
-      const root = ensureExportRoot();
-      root.innerHTML = buildDayHtmlString(payload);
-      const pageEl = root.querySelector("#noteshelfPdfPage");
-      if (!pageEl) throw new Error("PDFレイアウト生成失敗");
+      const pageEl = await renderPdfDom(payload);
 
-      await new Promise((resolve) => setTimeout(resolve, 120));
-
-      const canvas = await window.html2canvas(pageEl, {
-        backgroundColor: "#000000",
-        scale: IS_SAFARI ? 1.2 : 1.5,
-        useCORS: true,
-        logging: false,
-      });
-
-      const imgData = canvas.toDataURL("image/jpeg", IS_SAFARI ? 0.88 : 0.92);
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
-
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      if (imgHeight <= pageHeight) {
-        pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight, undefined, "FAST");
-      } else {
-        let y = 0;
-        let pageIndex = 0;
-        const pageCanvas = document.createElement("canvas");
-        const pageCtx = pageCanvas.getContext("2d");
-        const sliceHeightPx = Math.floor((canvas.width * pageHeight) / pageWidth);
-
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceHeightPx;
-
-        while (y < canvas.height) {
-          pageCtx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
-          pageCtx.fillStyle = "#000";
-          pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          pageCtx.drawImage(
-            canvas,
-            0,
-            y,
-            canvas.width,
-            sliceHeightPx,
-            0,
-            0,
-            pageCanvas.width,
-            sliceHeightPx
-          );
-
-          const pageImg = pageCanvas.toDataURL("image/jpeg", IS_SAFARI ? 0.88 : 0.92);
-          if (pageIndex > 0) pdf.addPage();
-          pdf.addImage(pageImg, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
-          y += sliceHeightPx;
-          pageIndex++;
-        }
-      }
-
-      const fileName = `logday-noteshelf-${dateKey}.pdf`;
-
+      document.body.classList.add("exporting-pdf");
       try {
-        const blob = pdf.output("blob");
-        if (navigator.share && typeof File !== "undefined") {
-          const file = new File([blob], fileName, { type: "application/pdf" });
-          if (!navigator.canShare || navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: fileName });
-            Toast.show("共有シートを開きました");
-            root.innerHTML = "";
-            return;
-          }
-        }
+        await waitFrame();
 
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 3000);
-        Toast.show("PDFを書き出しました");
-      } catch (err) {
-        console.error("share/save failed:", err);
+        const canvas = await window.html2canvas(pageEl, {
+          backgroundColor: "#000000",
+          scale: IS_SAFARI ? 1.35 : 2,
+          useCORS: true,
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL("image/jpeg", IS_SAFARI ? 0.9 : 0.94);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: "p",
+          unit: "mm",
+          format: "a4",
+          compress: true,
+        });
+
+        pdf.addImage(imgData, "JPEG", 0, 0, MM_A4_W, MM_A4_H, undefined, "FAST");
+
+        const fileName = `logday-noteshelf-${dateKey}.pdf`;
+
         try {
           const blob = pdf.output("blob");
+
+          if (navigator.share && typeof File !== "undefined") {
+            const file = new File([blob], fileName, { type: "application/pdf" });
+            if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+              await navigator.share({ files: [file], title: fileName });
+              Toast.show("共有シートを開きました");
+              pageEl.innerHTML = "";
+              return;
+            }
+          }
+
           const url = URL.createObjectURL(blob);
-          window.open(url, "_blank");
-          Toast.show("PDFを開きました");
-          setTimeout(() => URL.revokeObjectURL(url), 5000);
-        } catch (e2) {
-          console.error("fallback open failed:", e2);
-          Toast.show("PDF書き出しに失敗");
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fileName;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 3000);
+          Toast.show("PDFを書き出しました");
+        } catch (err) {
+          console.error("share/save failed:", err);
+          try {
+            const blob = pdf.output("blob");
+            const url = URL.createObjectURL(blob);
+            window.open(url, "_blank");
+            Toast.show("PDFを開きました");
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+          } catch (e2) {
+            console.error("fallback open failed:", e2);
+            Toast.show("PDF書き出しに失敗");
+          }
         }
       } finally {
-        root.innerHTML = "";
+        document.body.classList.remove("exporting-pdf");
+        pageEl.innerHTML = "";
+        pageEl.className = "";
       }
     }
 
