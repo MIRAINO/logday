@@ -11,6 +11,11 @@
                  viewport-fit=cover">
   <title>LOGDAY</title>
 
+  <!-- 丸ゴシック寄りフォント -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -31,12 +36,14 @@
     </div>
   </div>
 
-  <div id="meta">
-    <span id="weather"></span>
-    <div id="dayNote"></div>
-  </div>
+  <main id="appRoot">
+    <div id="meta">
+      <span id="weather"></span>
+      <div id="dayNote"></div>
+    </div>
 
-  <div id="entries"></div>
+    <div id="entries"></div>
+  </main>
 
   <div id="inputBar">
     <button class="iconBtn" id="plusBtn" type="button" title="追加">＋</button>
@@ -101,6 +108,28 @@
   </div>
 
   <div id="toast"></div>
+
+  <!-- Noteshelf用PDFレンダリング領域（画面には出さない） -->
+  <div id="pdfRenderRoot" aria-hidden="true">
+    <div id="pdfPage"></div>
+  </div>
+
+  <script>
+    window.LOGDAY_PDF_CONFIG = {
+      page: {
+        size: "A4",
+        orientation: "portrait"
+      },
+      noteshelf: {
+        mode: "single-page",
+        fixedTextScale: true,
+        reserveSummarySpace: true
+      },
+      font: {
+        body: '"M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif'
+      }
+    };
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
