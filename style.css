@@ -909,3 +909,47 @@ main{
     scroll-behavior:auto !important;
   }
 }
+
+.entry {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.entry img {
+  width: 140px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.entryText {
+  flex: 1;
+}
+
+.summaryArea {
+  margin-top: 20px;
+  height: 200px;
+  border-top: 1px solid #444;
+}
+
+/* ===== PDFレイアウト調整（実構造対応） ===== */
+
+.entrySwipe {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.entryContent {
+  flex: 1;
+}
+
+.entryContent img {
+  width: 140px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+}
