@@ -739,8 +739,8 @@ main{
 #pdfPage{
   width:var(--pdf-page-width);
   min-height:var(--pdf-page-min-height);
-  background:#000;
-  color:#fff;
+  background:#fff;
+  color:#000;
   padding:var(--pdf-pad-top) var(--pdf-pad-x) var(--pdf-pad-bottom);
   font-family:var(--pdf-font-main);
   line-height:1.45;
@@ -761,13 +761,13 @@ main{
   font-size:28px;
   font-weight:700;
   letter-spacing:.4px;
-  color:#fff;
+  color:#000;
 }
 
 #pdfPage .pdfMeta{
   margin-top:6px;
   font-size:14px;
-  color:rgba(255,255,255,0.72);
+  color:rgba(0,0,0,0.65);
 }
 
 #pdfPage .pdfEntries{
@@ -791,7 +791,7 @@ main{
   font-size:18px;
   font-weight:700;
   line-height:1.25;
-  color:#fff;
+  color:#000;
   padding-top:2px;
 }
 
@@ -804,7 +804,7 @@ main{
   word-break:break-word;
   font-size:18px;
   line-height:1.6;
-  color:#fff;
+  color:#000;
 }
 
 #pdfPage .pdfPhoto{
@@ -834,7 +834,7 @@ main{
 #pdfPage .pdfFile{
   margin-top:6px;
   font-size:14px;
-  color:rgba(255,255,255,0.72);
+  color:rgba(0,0,0,0.65);
 }
 
 #pdfPage .pdfSummarySpace{
